@@ -24,7 +24,7 @@ export default function DriverPage() {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     direction: 'to-school' as 'to-school' | 'from-school',
-    totalSeats: 4,
+    totalSeats: 0,
     pickupAddress: '',
     notes: '',
   })
@@ -46,6 +46,17 @@ export default function DriverPage() {
 
   const handleCreateRide = async () => {
     if (!user) return
+    
+    // Validate required fields
+    if (!formData.totalSeats || formData.totalSeats < 1) {
+      alert('Please enter the number of available seats (minimum 1)')
+      return
+    }
+    
+    if (!formData.pickupAddress.trim()) {
+      alert('Please enter a pickup address')
+      return
+    }
 
     try {
       await supabaseDb.createRide({
@@ -65,7 +76,7 @@ export default function DriverPage() {
       setFormData({
         date: new Date().toISOString().split('T')[0],
         direction: 'to-school',
-        totalSeats: 4,
+        totalSeats: 0,
         pickupAddress: '',
         notes: '',
       })
@@ -129,13 +140,13 @@ export default function DriverPage() {
               </Button>
             </DialogTrigger>
             <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create New Ride</DialogTitle>
-                <DialogDescription>
+              <DialogHeader className="px-1 sm:px-0">
+                <DialogTitle className="text-lg sm:text-xl">Create New Ride</DialogTitle>
+                <DialogDescription className="text-sm">
                   Fill in the details for your ride. Seats will be assigned on a first-come, first-served basis.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
+              <div className="grid gap-3 sm:gap-4 py-2 sm:py-4 px-1 sm:px-0">
                 <div className="grid gap-2">
                   <Label htmlFor="date">Date</Label>
                   <Input
@@ -196,11 +207,11 @@ export default function DriverPage() {
                   />
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+              <DialogFooter className="px-1 sm:px-0 gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => setIsCreateOpen(false)} className="w-full sm:w-auto">
                   Cancel
                 </Button>
-                <Button onClick={handleCreateRide} disabled={!formData.pickupAddress}>
+                <Button onClick={handleCreateRide} disabled={!formData.pickupAddress || !formData.totalSeats || formData.totalSeats < 1} className="w-full sm:w-auto">
                   Create Ride
                 </Button>
               </DialogFooter>

@@ -9,11 +9,12 @@ export interface NumberInputProps
   onChange: (value: number) => void
   min?: number
   max?: number
+  placeholder?: string
 }
 
 const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
-  ({ className, value, onChange, min, max, ...props }, ref) => {
-    const [inputValue, setInputValue] = React.useState<string>(value.toString())
+  ({ className, value, onChange, min, max, placeholder, ...props }, ref) => {
+    const [inputValue, setInputValue] = React.useState<string>(value === 0 ? '' : value.toString())
     const [isMobile, setIsMobile] = React.useState(false)
 
     React.useEffect(() => {
@@ -29,8 +30,15 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
     }, [])
 
     React.useEffect(() => {
-      setInputValue(value.toString())
-    }, [value])
+      // Only update if value actually changed (not just from 0 to 0)
+      if (value === 0 && inputValue === '') {
+        // Keep empty if it's 0 and already empty
+        return
+      }
+      if (value !== 0 || inputValue !== '') {
+        setInputValue(value === 0 ? '' : value.toString())
+      }
+    }, [value, inputValue])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value
@@ -61,15 +69,15 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
     }
 
     const handleBlur = () => {
-      // Ensure value is valid on blur - if empty or invalid, set to min
+      // On blur, if empty, keep it empty (don't force a value)
       const numValue = parseInt(inputValue, 10)
       if (inputValue === '' || isNaN(numValue)) {
-        const defaultValue = min || 1
-        setInputValue(defaultValue.toString())
-        onChange(defaultValue)
+        // Keep empty, set value to 0
+        setInputValue('')
+        onChange(0)
       } else {
         // Ensure it matches the actual value
-        setInputValue(value.toString())
+        setInputValue(value === 0 ? '' : value.toString())
       }
     }
 
@@ -102,6 +110,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
         onKeyDown={handleKeyDown}
         min={min}
         max={max}
+        placeholder={placeholder || (min ? `Min: ${min}` : '')}
         className={cn(
           "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
           className
