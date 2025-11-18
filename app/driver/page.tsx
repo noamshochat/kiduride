@@ -114,16 +114,16 @@ export default function DriverPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Navigation />
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-primary">Driver Dashboard</h1>
-          <p className="text-muted-foreground">Manage your rides and passengers</p>
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-full">
+        <div className="mb-4 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary">Driver Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Manage your rides and passengers</p>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Create New Ride
               </Button>
@@ -208,7 +208,7 @@ export default function DriverPage() {
           </Dialog>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           {rides.length === 0 ? (
             <Card className="col-span-full">
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -217,14 +217,14 @@ export default function DriverPage() {
             </Card>
           ) : (
             rides.map((ride) => (
-              <Card key={ride.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">
+              <Card key={ride.id} className="w-full">
+                <CardHeader className="p-4 sm:p-6">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="text-base sm:text-lg">
                         {format(new Date(ride.date), 'MMM d, yyyy')}
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-xs sm:text-sm">
                         {ride.direction === 'to-school' ? 'To university' : 'From university'}
                       </CardDescription>
                     </div>
@@ -232,13 +232,13 @@ export default function DriverPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDeleteRide(ride.id)}
-                      className="text-destructive"
+                      className="text-destructive flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-2 sm:space-y-3 p-4 sm:p-6 pt-0">
                   <div className="flex items-center gap-2 text-sm">
                     <Users className="h-4 w-4 text-muted-foreground" />
                     <span>

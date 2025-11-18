@@ -14,34 +14,39 @@ export function Navigation() {
 
   return (
     <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-primary">KiduRide</h1>
-            <div className="flex gap-2">
+      <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 max-w-full">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold text-primary whitespace-nowrap">KiduRide</h1>
+            <div className="flex gap-1 sm:gap-2 flex-1 min-w-0">
               <Button
                 variant={pathname === '/driver' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => router.push('/driver')}
+                className="flex-1 sm:flex-initial text-xs sm:text-sm px-2 sm:px-3"
               >
-                <Car className="mr-2 h-4 w-4" />
-                Driver Mode
+                <Car className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Driver Mode</span>
+                <span className="sm:hidden">Driver</span>
               </Button>
               <Button
                 variant={pathname === '/parent' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => router.push('/parent')}
+                className="flex-1 sm:flex-initial text-xs sm:text-sm px-2 sm:px-3"
               >
-                <Users className="mr-2 h-4 w-4" />
-                Parent Mode
+                <Users className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Parent Mode</span>
+                <span className="sm:hidden">Parent</span>
               </Button>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user.name}</span>
-            <Button variant="outline" size="sm" onClick={logout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
+          <div className="flex items-center gap-2 sm:gap-4">
+            <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">{user.name}</span>
+            <Button variant="outline" size="sm" onClick={logout} className="text-xs sm:text-sm">
+              <LogOut className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Sign Out</span>
+              <span className="sm:hidden">Out</span>
             </Button>
           </div>
         </div>
