@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
@@ -127,7 +128,7 @@ export default function DriverPage() {
                 Create New Ride
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Ride</DialogTitle>
                 <DialogDescription>
@@ -143,6 +144,7 @@ export default function DriverPage() {
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     min={new Date().toISOString().split('T')[0]}
+                    className="w-full"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -153,24 +155,24 @@ export default function DriverPage() {
                       setFormData({ ...formData, direction: value })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="to-school">To Uni</SelectItem>
-                      <SelectItem value="from-school">From Uni</SelectItem>
+                      <SelectItem value="to-school">To university</SelectItem>
+                      <SelectItem value="from-school">From university</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="seats">Total Seats</Label>
-                  <Input
+                  <NumberInput
                     id="seats"
-                    type="number"
-                    min="1"
-                    max="10"
+                    min={1}
+                    max={10}
                     value={formData.totalSeats}
-                    onChange={(e) => setFormData({ ...formData, totalSeats: parseInt(e.target.value) || 1 })}
+                    onChange={(value) => setFormData({ ...formData, totalSeats: value })}
+                    className="w-full"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -180,6 +182,7 @@ export default function DriverPage() {
                     value={formData.pickupAddress}
                     onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
                     placeholder="123 Main St, City"
+                    className="w-full"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -189,6 +192,7 @@ export default function DriverPage() {
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     placeholder="Any additional information..."
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -221,7 +225,7 @@ export default function DriverPage() {
                         {format(new Date(ride.date), 'MMM d, yyyy')}
                       </CardTitle>
                       <CardDescription>
-                        {ride.direction === 'to-school' ? 'To Uni' : 'From Uni'}
+                        {ride.direction === 'to-school' ? 'To university' : 'From university'}
                       </CardDescription>
                     </div>
                     <Button
