@@ -3,7 +3,8 @@
 import { useAuth } from '@/components/auth-provider'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { demoData, Ride } from '@/lib/demo-data'
+import { Ride } from '@/lib/demo-data'
+import { supabaseDb } from '@/lib/supabase-db'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -37,7 +38,7 @@ export default function DriverPage() {
 
   const loadRides = async () => {
     if (user) {
-      const driverRides = await demoData.getRidesByDriver(user.id)
+      const driverRides = await supabaseDb.getRidesByDriver(user.id)
       setRides(driverRides)
     }
   }
@@ -46,7 +47,7 @@ export default function DriverPage() {
     if (!user) return
 
     try {
-      await demoData.createRide({
+      await supabaseDb.createRide({
         driverId: user.id,
         driverName: user.name,
         date: formData.date,
@@ -80,7 +81,7 @@ export default function DriverPage() {
   const handleDeleteRide = async (rideId: string) => {
     if (confirm('Are you sure you want to delete this ride?')) {
       try {
-        const success = await demoData.deleteRide(rideId)
+        const success = await supabaseDb.deleteRide(rideId)
         if (success) {
           await loadRides()
         } else {
@@ -156,8 +157,8 @@ export default function DriverPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="to-school">To School</SelectItem>
-                      <SelectItem value="from-school">From School</SelectItem>
+                      <SelectItem value="to-school">To Uni</SelectItem>
+                      <SelectItem value="from-school">From Uni</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -220,7 +221,7 @@ export default function DriverPage() {
                         {format(new Date(ride.date), 'MMM d, yyyy')}
                       </CardTitle>
                       <CardDescription>
-                        {ride.direction === 'to-school' ? 'To School' : 'From School'}
+                        {ride.direction === 'to-school' ? 'To Uni' : 'From Uni'}
                       </CardDescription>
                     </div>
                     <Button

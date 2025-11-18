@@ -17,7 +17,7 @@ export function Navigation() {
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-primary">KidoRide</h1>
+            <h1 className="text-xl font-bold text-primary">KiduRide</h1>
             <div className="flex gap-2">
               <Button
                 variant={pathname === '/driver' ? 'default' : 'outline'}

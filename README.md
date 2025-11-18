@@ -1,4 +1,4 @@
-# KidoRide - Car Pool Coordination Platform
+# KiduRide - Car Pool Coordination Platform
 
 A web and mobile responsive application for drivers and parents to coordinate rides for children. Built with Next.js 14, TypeScript, TailwindCSS, and shadcn/ui components.
 
@@ -65,7 +65,7 @@ The app comes with pre-configured demo users for testing:
 2. Click "Create New Ride" to add a new ride
 3. Fill in the ride details:
    - Date
-   - Direction (To School / From School)
+   - Direction (To Uni / From Uni)
    - Total seats available
    - Pickup address
    - Optional notes
@@ -94,7 +94,7 @@ When ready to use Supabase, replace the demo data functions with Supabase client
 ## Project Structure
 
 ```
-kidoride/
+kiduride/
 ├── app/                    # Next.js App Router pages
 │   ├── driver/            # Driver dashboard
 │   ├── parent/            # Parent dashboard

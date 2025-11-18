@@ -6,6 +6,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
+  child_name?: string; // Added for Supabase compatibility
 }
 
 export interface Child {

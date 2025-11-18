@@ -8,7 +8,7 @@ This app can use Google Sheets as the database instead of a JSON file. Here's ho
 
 1. Go to [Google Sheets](https://sheets.google.com)
 2. Create a new spreadsheet
-3. Name it "KidoRide Database" (or any name you prefer)
+3. Name it "KiduRide Database" (or any name you prefer)
 4. Create two sheets:
    - **Rides** - for storing ride information
    - **Passengers** - for storing passenger assignments
@@ -26,7 +26,7 @@ This app can use Google Sheets as the database instead of a JSON file. Here's ho
 
 1. Go to "APIs & Services" > "Credentials"
 2. Click "Create Credentials" > "Service Account"
-3. Give it a name (e.g., "kidoride-service")
+3. Give it a name (e.g., "kiduride-service")
 4. Click "Create and Continue"
 5. Skip role assignment (or add "Editor" role)
 6. Click "Done"
@@ -39,7 +39,7 @@ This app can use Google Sheets as the database instead of a JSON file. Here's ho
 ### 4. Share Google Sheet with Service Account
 
 1. Open the JSON file you downloaded
-2. Copy the `client_email` value (looks like: `kidoride-service@project-id.iam.gserviceaccount.com`)
+2. Copy the `client_email` value (looks like: `kiduride-service@project-id.iam.gserviceaccount.com`)
 3. Open your Google Sheet
 4. Click "Share" button
 5. Paste the service account email

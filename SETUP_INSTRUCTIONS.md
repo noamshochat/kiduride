@@ -12,7 +12,7 @@ Visit: https://console.cloud.google.com/
 ### 2. Create or Select a Project
 - Click the project dropdown at the top
 - Click "New Project" (or use existing)
-- Name it "KidoRide" (or anything)
+- Name it "KiduRide" (or anything)
 - Click "Create"
 
 ### 3. Enable Google Sheets API
@@ -23,13 +23,13 @@ Visit: https://console.cloud.google.com/
 ### 4. Create Service Account
 - Go to "APIs & Services" > "Credentials"
 - Click "Create Credentials" > "Service Account"
-- **Service account name:** `kidoride-service`
+- **Service account name:** `kiduride-service`
 - Click "Create and Continue"
 - Skip "Grant this service account access" (click "Continue")
 - Click "Done"
 
 ### 5. Create Key (Download JSON)
-- Click on the service account you just created (the email that looks like `kidoride-service@...`)
+- Click on the service account you just created (the email that looks like `kiduride-service@...`)
 - Go to "Keys" tab
 - Click "Add Key" > "Create new key"
 - Choose **JSON** format
@@ -40,7 +40,7 @@ Visit: https://console.cloud.google.com/
 1. Open the downloaded JSON file (it's a text file)
 2. Find the line that says `"client_email"` - it looks like:
    ```
-   "client_email": "kidoride-service@your-project.iam.gserviceaccount.com"
+   "client_email": "kiduride-service@your-project.iam.gserviceaccount.com"
    ```
 3. Copy that email address (the part in quotes)
 4. Open your spreadsheet: https://docs.google.com/spreadsheets/d/1V7oh1-EUyIYNzJf4NkNBHSUMV4BbWtt3-HdXRdTzMsI/edit

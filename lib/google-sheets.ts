@@ -2,7 +2,11 @@ import { Ride, Passenger } from './demo-data'
 
 // Google Sheets configuration
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID || '1V7oh1-EUyIYNzJf4NkNBHSUMV4BbWtt3-HdXRdTzMsI'
-const USE_GOOGLE_SHEETS = !!(process.env.GOOGLE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_SERVICE_ACCOUNT_PATH)
+const USE_GOOGLE_SHEETS = !!(
+  process.env.GOOGLE_SERVICE_ACCOUNT_KEY || 
+  process.env.GOOGLE_SERVICE_ACCOUNT_PATH ||
+  process.env.GOOGLE_CLIENT_ID // OAuth 2.0 support
+)
 
 // Initialize Google Sheets API (only if credentials are provided)
 async function getSheetsClient() {
@@ -13,10 +17,27 @@ async function getSheetsClient() {
   try {
     const { google } = await import('googleapis')
     
-    // Option 1: Using Service Account from environment variable (Recommended)
+    // Option 1: Using Service Account from environment variable
     if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
       try {
-        const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY)
+        // Handle both string and already-parsed JSON
+        let serviceAccount: any
+        if (typeof process.env.GOOGLE_SERVICE_ACCOUNT_KEY === 'string') {
+          // Remove surrounding quotes if present
+          const keyString = process.env.GOOGLE_SERVICE_ACCOUNT_KEY.trim()
+          const cleanedKey = keyString.startsWith("'") && keyString.endsWith("'") 
+            ? keyString.slice(1, -1) 
+            : keyString
+          serviceAccount = JSON.parse(cleanedKey)
+        } else {
+          serviceAccount = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
+        }
+        
+        // Ensure private_key has proper newlines
+        if (serviceAccount.private_key && typeof serviceAccount.private_key === 'string') {
+          serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n')
+        }
+        
         const auth = new google.auth.GoogleAuth({
           credentials: serviceAccount,
           scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -24,6 +45,7 @@ async function getSheetsClient() {
         return google.sheets({ version: 'v4', auth })
       } catch (error) {
         console.error('Error parsing service account key:', error)
+        console.error('Tip: Try using GOOGLE_SERVICE_ACCOUNT_PATH instead')
       }
     }
 
@@ -36,6 +58,21 @@ async function getSheetsClient() {
       return google.sheets({ version: 'v4', auth })
     }
 
+    // Option 3: Using OAuth 2.0 (for organization restrictions)
+    if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REFRESH_TOKEN) {
+      const auth = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000'
+      )
+      
+      auth.setCredentials({
+        refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+      })
+      
+      return google.sheets({ version: 'v4', auth })
+    }
+
     // Fallback: Default auth
     const auth = new google.auth.GoogleAuth({
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -43,7 +80,7 @@ async function getSheetsClient() {
     return google.sheets({ version: 'v4', auth })
   } catch (error) {
     console.error('Error initializing Google Sheets client:', error)
-    return null // Fall back to file system
+    return null
   }
 }
 
@@ -189,12 +226,21 @@ function rowToPassenger(row: any[]): Passenger {
   }
 }
 
+// Simple cache to reduce API calls
+let ridesCache: { data: Ride[]; timestamp: number } | null = null
+const CACHE_DURATION = 30000 // 30 seconds cache
+
 export const googleSheets = {
-  // Get all rides (across all date sheets)
+  // Get all rides (across all date sheets) - with caching
   async getRides(): Promise<Ride[]> {
     // Return empty if Google Sheets not configured
     if (!USE_GOOGLE_SHEETS) {
       return []
+    }
+
+    // Return cached data if still valid
+    if (ridesCache && Date.now() - ridesCache.timestamp < CACHE_DURATION) {
+      return ridesCache.data
     }
 
     try {
@@ -224,8 +270,7 @@ export const googleSheets = {
 
           const rideRows = ridesResponse.data.values || []
           rideRows.forEach((row) => {
-            if (row.length > 0 && row[0]) {
-              // Only process rows with data
+            if (row.length > 0 && row[0] && typeof row[0] === 'string' && row[0].startsWith('r')) {
               const ride = rowToRide(row)
               allRides.push(ride)
             }
@@ -239,9 +284,56 @@ export const googleSheets = {
 
           const passengerRows = passengersResponse.data.values || []
           passengerRows.forEach((row) => {
-            if (row.length > 0 && row[0]) {
-              const passenger = rowToPassenger(row)
+            // Handle rows that have rideId but missing passenger ID
+            if (row.length >= 2 && row[1] && typeof row[1] === 'string' && row[1].startsWith('r')) {
               const rideId = row[1]
+              
+              // If passenger ID is missing but we have child name, reconstruct
+              if ((!row[0] || row[0].trim() === '') && row.length >= 3 && row[2] && row[2].trim() !== '') {
+                const childName = row[2]
+                const parentId = row.length >= 4 ? row[3] : ''
+                const parentName = row.length >= 5 ? row[4] : ''
+                const pickupFromHome = row.length >= 6 ? row[5] === 'TRUE' : false
+                const pickupAddress = row.length >= 7 ? row[6] : undefined
+                
+                const passenger: Passenger = {
+                  id: `p${Date.now()}-temp`,
+                  childName: childName,
+                  parentId: parentId || '',
+                  parentName: parentName || '',
+                  pickupFromHome: pickupFromHome,
+                  pickupAddress: pickupAddress,
+                }
+                
+                if (!allPassengers[rideId]) {
+                  allPassengers[rideId] = []
+                }
+                allPassengers[rideId].push(passenger)
+              } else if (row[0] && typeof row[0] === 'string' && row[0].startsWith('p')) {
+                // Normal case: passenger ID exists
+                const passenger = rowToPassenger(row)
+                const rideId = row[1]
+                
+                if (rideId) {
+                  if (!allPassengers[rideId]) {
+                    allPassengers[rideId] = []
+                  }
+                  allPassengers[rideId].push(passenger)
+                }
+              }
+            } else if (row.length > 0 && row[0] && typeof row[0] === 'string' && row[0].startsWith('p')) {
+              // Passenger ID exists but rideId might be missing
+              const passenger = rowToPassenger(row)
+              let rideId = row[1]
+              
+              // If rideId is missing, try to find it by matching to a ride in the same sheet
+              if (!rideId || rideId.trim() === '') {
+                const matchingRide = allRides.find(r => r.date === sheetName)
+                if (matchingRide) {
+                  rideId = matchingRide.id
+                }
+              }
+              
               if (rideId) {
                 if (!allPassengers[rideId]) {
                   allPassengers[rideId] = []
@@ -261,18 +353,136 @@ export const googleSheets = {
         ride.passengers = allPassengers[ride.id] || []
       })
 
+      // Cache the results
+      ridesCache = {
+        data: allRides,
+        timestamp: Date.now()
+      }
+
       return allRides
     } catch (error) {
       console.error('Error reading rides from Google Sheets:', error)
       return []
     }
   },
+  
+  // Clear cache (call this after write operations)
+  clearCache(): void {
+    ridesCache = null
+  },
 
-  // Get rides for a specific date
-  async getRidesByDate(date: string): Promise<Ride[]> {
+  // Get a single ride by ID
+  async getRideById(id: string): Promise<Ride | undefined> {
     try {
       const allRides = await this.getRides()
-      return allRides.filter((r) => r.date === date)
+      return allRides.find((r) => r.id === id)
+    } catch (error) {
+      console.error('Error fetching ride by id:', error)
+      return undefined
+    }
+  },
+
+  // Get rides for a specific date - optimized to only read that date's sheet
+  async getRidesByDate(date: string): Promise<Ride[]> {
+    if (!USE_GOOGLE_SHEETS) {
+      return []
+    }
+
+    try {
+      const sheets = await getSheetsClient()
+      if (!sheets) {
+        return []
+      }
+
+      const sheetName = getSheetNameForDate(date)
+      const allRides: Ride[] = []
+      const allPassengers: { [rideId: string]: Passenger[] } = {}
+
+      try {
+        // Read rides (columns A-J, starting from row 2) - only for this date
+        const ridesResponse = await sheets.spreadsheets.values.get({
+          spreadsheetId: SPREADSHEET_ID,
+          range: `${sheetName}!A2:J`,
+        })
+
+        const rideRows = ridesResponse.data.values || []
+        rideRows.forEach((row) => {
+          if (row.length > 0 && row[0] && typeof row[0] === 'string' && row[0].startsWith('r')) {
+            const ride = rowToRide(row)
+            allRides.push(ride)
+          }
+        })
+
+        // Read passengers (columns K-Q, starting from row 2) - only for this date
+        const passengersResponse = await sheets.spreadsheets.values.get({
+          spreadsheetId: SPREADSHEET_ID,
+          range: `${sheetName}!K2:Q`,
+        })
+
+        const passengerRows = passengersResponse.data.values || []
+        passengerRows.forEach((row) => {
+          if (row.length >= 2 && row[1] && typeof row[1] === 'string' && row[1].startsWith('r')) {
+            const rideId = row[1]
+            
+            if ((!row[0] || row[0].trim() === '') && row.length >= 3 && row[2] && row[2].trim() !== '') {
+              const childName = row[2]
+              const parentId = row.length >= 4 ? row[3] : ''
+              const parentName = row.length >= 5 ? row[4] : ''
+              const pickupFromHome = row.length >= 6 ? row[5] === 'TRUE' : false
+              const pickupAddress = row.length >= 7 ? row[6] : undefined
+              
+              const passenger: Passenger = {
+                id: `p${Date.now()}-temp`,
+                childName: childName,
+                parentId: parentId || '',
+                parentName: parentName || '',
+                pickupFromHome: pickupFromHome,
+                pickupAddress: pickupAddress,
+              }
+              
+              if (!allPassengers[rideId]) {
+                allPassengers[rideId] = []
+              }
+              allPassengers[rideId].push(passenger)
+            } else if (row[0] && typeof row[0] === 'string' && row[0].startsWith('p')) {
+              const passenger = rowToPassenger(row)
+              if (rideId) {
+                if (!allPassengers[rideId]) {
+                  allPassengers[rideId] = []
+                }
+                allPassengers[rideId].push(passenger)
+              }
+            }
+          } else if (row.length > 0 && row[0] && typeof row[0] === 'string' && row[0].startsWith('p')) {
+            const passenger = rowToPassenger(row)
+            let rideId = row[1]
+            
+            if (!rideId || rideId.trim() === '') {
+              const matchingRide = allRides[0] // If only one ride on this date
+              if (matchingRide) {
+                rideId = matchingRide.id
+              }
+            }
+            
+            if (rideId) {
+              if (!allPassengers[rideId]) {
+                allPassengers[rideId] = []
+              }
+              allPassengers[rideId].push(passenger)
+            }
+          }
+        })
+
+        // Attach passengers to rides
+        allRides.forEach((ride) => {
+          ride.passengers = allPassengers[ride.id] || []
+        })
+
+        return allRides
+      } catch (error) {
+        // Sheet might not exist yet, return empty array
+        return []
+      }
     } catch (error) {
       console.error('Error fetching rides by date:', error)
       return []
@@ -313,6 +523,9 @@ export const googleSheets = {
           values: [rideToRow(newRide)],
         },
       })
+
+      // Clear cache after write operation
+      this.clearCache()
 
       return newRide
     } catch (error) {
@@ -373,6 +586,9 @@ export const googleSheets = {
         },
       })
 
+      // Clear cache after write operation
+      this.clearCache()
+
       return true
     } catch (error) {
       console.error('Error deleting ride from Google Sheets:', error)
@@ -399,15 +615,59 @@ export const googleSheets = {
       }
 
       const sheetName = getSheetNameForDate(ride.date)
+      
+      // Validate rideId is present
+      if (!rideId || rideId.trim() === '') {
+        throw new Error('Invalid rideId')
+      }
+      
+      const passengerRow = passengerToRow(passenger, rideId)
+      
+      // Validate passengerRow has all required data
+      if (!passengerRow[1] || passengerRow[1] !== rideId) {
+        throw new Error('Failed to create passenger row with rideId')
+      }
 
-      await sheets.spreadsheets.values.append({
+      // Ensure we have exactly 7 columns (K through Q)
+      if (passengerRow.length !== 7) {
+        throw new Error(`Invalid passenger row length: ${passengerRow.length}, expected 7`)
+      }
+
+      // Find the next empty row in the passenger section (columns K-Q)
+      // First, get all existing passenger data to find the last row
+      const existingPassengers = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
         range: `${sheetName}!K:Q`,
+      })
+      
+      const existingRows = existingPassengers.data.values || []
+      // Find the last row with data (skip header row 1, so start from index 1)
+      let nextRow = 2 // Start after header
+      if (existingRows.length > 1) {
+        // Find the last non-empty row
+        for (let i = existingRows.length - 1; i >= 1; i--) {
+          if (existingRows[i] && existingRows[i].length > 0 && existingRows[i].some(cell => cell && cell.toString().trim() !== '')) {
+            nextRow = i + 2 // +2 because array is 0-indexed and we skip header
+            break
+          }
+        }
+        if (nextRow === 2 && existingRows.length > 1) {
+          nextRow = existingRows.length + 1
+        }
+      }
+      
+      // Use update instead of append to ensure data goes to the correct columns
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${sheetName}!K${nextRow}:Q${nextRow}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [passengerToRow(passenger, rideId)],
+          values: [passengerRow],
         },
       })
+      
+      // Clear cache after write operation
+      this.clearCache()
 
       // Update ride's available seats
       await this.updateRideSeats(rideId)
@@ -468,6 +728,9 @@ export const googleSheets = {
           ],
         },
       })
+
+      // Clear cache after write operation
+      this.clearCache()
 
       // Update ride's available seats
       await this.updateRideSeats(rideId)

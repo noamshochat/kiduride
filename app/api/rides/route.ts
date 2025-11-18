@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { googleSheets } from '@/lib/google-sheets'
+import { supabaseDb } from '@/lib/supabase-db'
 
 // GET - Read all rides
 export async function GET() {
   try {
-    const rides = await googleSheets.getRides()
+    const rides = await supabaseDb.getRides()
     return NextResponse.json(rides)
   } catch (error) {
     console.error('Error reading rides:', error)
@@ -16,7 +16,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const ride = await request.json()
-    const newRide = await googleSheets.createRide(ride)
+    const newRide = await supabaseDb.createRide(ride)
     return NextResponse.json(newRide)
   } catch (error) {
     console.error('Error creating ride:', error)
@@ -46,7 +46,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Ride ID required' }, { status: 400 })
     }
     
-    const success = await googleSheets.deleteRide(id)
+    const success = await supabaseDb.deleteRide(id)
     if (success) {
       return NextResponse.json({ success: true })
     } else {

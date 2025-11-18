@@ -31,7 +31,7 @@ export default function SelectModePage() {
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold text-primary">Welcome, {user.name}!</CardTitle>
           <CardDescription>
-            Choose how you'd like to use KidoRide
+            Choose how you'd like to use KiduRide
           </CardDescription>
         </CardHeader>
         <CardContent>

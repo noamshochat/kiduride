@@ -11,6 +11,7 @@ export default function Home() {
   const { user, login, isLoading } = useAuth()
   const router = useRouter()
   const [email, setEmail] = useState('')
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
 
   useEffect(() => {
     if (user && !isLoading) {
@@ -35,16 +36,21 @@ export default function Home() {
     )
   }
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    login(email)
+    setIsLoggingIn(true)
+    try {
+      await login(email)
+    } finally {
+      setIsLoggingIn(false)
+    }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-primary">KidoRide</CardTitle>
+          <CardTitle className="text-3xl font-bold text-primary">KiduRide</CardTitle>
           <CardDescription>
             Car Pool Coordination Platform
           </CardDescription>
@@ -64,11 +70,11 @@ export default function Home() {
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Demo users: john@example.com (driver), sarah@example.com (parent), mike@example.com (driver), lisa@example.com (parent), alex@example.com (driver & parent)
+                Sign in with an email that exists in the system. Only registered users can access the platform.
               </p>
             </div>
-            <Button type="submit" className="w-full">
-              Sign In
+            <Button type="submit" className="w-full" disabled={isLoggingIn}>
+              {isLoggingIn ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
         </CardContent>

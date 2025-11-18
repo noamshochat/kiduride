@@ -6,7 +6,7 @@ import { AuthProvider } from '@/components/auth-provider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'KidoRide - Car Pool Coordination',
+  title: 'KiduRide - Car Pool Coordination',
   description: 'Coordinate rides for children with drivers and parents',
 }
 

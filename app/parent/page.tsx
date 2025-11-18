@@ -3,7 +3,8 @@
 import { useAuth } from '@/components/auth-provider'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { demoData, Ride } from '@/lib/demo-data'
+import { Ride, User } from '@/lib/demo-data'
+import { supabaseDb } from '@/lib/supabase-db'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -11,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { format } from 'date-fns'
-import { Calendar, Users, MapPin, CheckCircle2, XCircle, Plus, X, Home } from 'lucide-react'
+import { Calendar, Users, MapPin, CheckCircle2, XCircle, Plus, X, Home, Phone } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 
 interface ChildEntry {
@@ -31,17 +32,45 @@ export default function ParentPage() {
   const [childrenEntries, setChildrenEntries] = useState<ChildEntry[]>([
     { id: '1', name: '', pickupFromHome: false, pickupAddress: '' }
   ])
+  const [usersMap, setUsersMap] = useState<Record<string, User>>({})
 
+  // Load users map on mount
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const users = await supabaseDb.getUsers()
+        const map: Record<string, User> = {}
+        users.forEach(u => {
+          map[u.id] = u
+        })
+        setUsersMap(map)
+      } catch (error) {
+        console.error('Error loading users:', error)
+      }
+    }
+    loadUsers()
+  }, [])
+
+  // Only load rides on initial mount, not when date changes
   useEffect(() => {
     if (user) {
       loadRides()
     } else if (!user) {
       router.push('/')
     }
-  }, [user, router, selectedDate])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, router])
+
+  // Load rides when date changes (but only if user is logged in)
+  useEffect(() => {
+    if (user) {
+      loadRides()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate])
 
   const loadRides = async () => {
-    const dateRides = await demoData.getRidesByDate(selectedDate)
+    const dateRides = await supabaseDb.getRidesByDate(selectedDate)
     setRides(dateRides)
   }
 
@@ -110,7 +139,7 @@ export default function ParentPage() {
         }
 
         try {
-          const success = await demoData.addPassenger(selectedRide.id, passenger)
+          const success = await supabaseDb.addPassenger(selectedRide.id, passenger)
           if (success) {
             successCount++
           }
@@ -148,7 +177,7 @@ export default function ParentPage() {
     if (!user) return
 
     // Check if this passenger belongs to the current user
-    const ride = await demoData.getRideById(rideId)
+    const ride = await supabaseDb.getRideById(rideId)
     if (!ride) return
 
     const passenger = ride.passengers.find(p => p.id === passengerId)
@@ -159,7 +188,7 @@ export default function ParentPage() {
 
     if (confirm('Are you sure you want to remove this child from the ride?')) {
       try {
-        const success = await demoData.removePassenger(rideId, passengerId)
+        const success = await supabaseDb.removePassenger(rideId, passengerId)
         if (success) {
           await loadRides()
         } else {
@@ -232,6 +261,7 @@ export default function ParentPage() {
               const userPassengers = ride.passengers.filter(p => p.parentId === user.id)
               const isFull = ride.availableSeats <= 0
               const hasUserChild = userPassengers.length > 0
+              const driver = usersMap[ride.driverId]
 
               return (
                 <Card key={ride.id} className={isFull ? 'opacity-75' : ''}>
@@ -239,7 +269,7 @@ export default function ParentPage() {
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-lg">
-                          {ride.direction === 'to-school' ? 'To School' : 'From School'}
+                          {ride.direction === 'to-school' ? 'To Uni' : 'From Uni'}
                         </CardTitle>
                         <CardDescription>
                           {format(new Date(ride.date), 'MMM d, yyyy')} • {ride.driverName}
@@ -264,6 +294,14 @@ export default function ParentPage() {
                       <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <span className="text-muted-foreground">{ride.pickupAddress}</span>
                     </div>
+                    {driver?.phone && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <a href={`tel:${driver.phone}`} className="text-muted-foreground hover:text-foreground hover:underline">
+                          {driver.phone}
+                        </a>
+                      </div>
+                    )}
                     {ride.notes && (
                       <div className="text-sm">
                         <p className="font-medium">Notes:</p>
@@ -334,7 +372,7 @@ export default function ParentPage() {
                 <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
                   <p><strong>Ride Details:</strong></p>
                   <p>Date: {format(new Date(selectedRide.date), 'MMM d, yyyy')}</p>
-                  <p>Direction: {selectedRide.direction === 'to-school' ? 'To School' : 'From School'}</p>
+                  <p>Direction: {selectedRide.direction === 'to-school' ? 'To Uni' : 'From Uni'}</p>
                   <p>Pickup Location: {selectedRide.pickupAddress}</p>
                   <p>Available Seats: {selectedRide.availableSeats}</p>
                 </div>
