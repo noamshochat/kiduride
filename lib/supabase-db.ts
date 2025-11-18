@@ -314,5 +314,46 @@ export const supabaseDb = {
 
     return true
   },
+
+  // Admin functions - these check admin status via API (backend validation)
+  async checkIsAdmin(userId: string): Promise<boolean> {
+    try {
+      // Call backend API to check admin status - never trust frontend
+      const response = await fetch('/api/admin/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
+
+      if (!response.ok) {
+        return false
+      }
+
+      const data = await response.json()
+      return data.isAdmin === true
+    } catch (error) {
+      console.error('Error checking admin status:', error)
+      return false
+    }
+  },
+
+  async getAllRidesAdmin(userId: string): Promise<Ride[]> {
+    try {
+      // Call backend API - backend validates admin status before returning data
+      const response = await fetch(`/api/admin/rides?userId=${encodeURIComponent(userId)}`)
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('Unauthorized: Admin access required')
+        }
+        throw new Error('Failed to fetch admin rides')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error fetching admin rides:', error)
+      throw error
+    }
+  },
 }
 

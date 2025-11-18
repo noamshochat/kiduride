@@ -7,6 +7,7 @@ export interface User {
   email: string;
   phone?: string;
   child_name?: string; // Added for Supabase compatibility
+  is_admin?: boolean; // Admin privileges - checked on backend only
 }
 
 export interface Child {

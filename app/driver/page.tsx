@@ -20,6 +20,8 @@ export default function DriverPage() {
   const { user, logout } = useAuth()
   const router = useRouter()
   const [rides, setRides] = useState<Ride[]>([])
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [isLoadingAdmin, setIsLoadingAdmin] = useState(true)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -31,14 +33,54 @@ export default function DriverPage() {
 
   useEffect(() => {
     if (user) {
-      loadRides()
+      checkAdminAndLoadRides()
     } else if (!user) {
       router.push('/')
     }
   }, [user, router])
 
+  const checkAdminAndLoadRides = async () => {
+    if (!user) return
+
+    setIsLoadingAdmin(true)
+    try {
+      // Check admin status via backend API (never trust frontend)
+      const adminStatus = await supabaseDb.checkIsAdmin(user.id)
+      setIsAdmin(adminStatus)
+
+      // Load rides based on admin status
+      if (adminStatus) {
+        // Admin: Load all rides from all drivers
+        const allRides = await supabaseDb.getAllRidesAdmin(user.id)
+        setRides(allRides)
+      } else {
+        // Regular user: Load only their own rides
+        const driverRides = await supabaseDb.getRidesByDriver(user.id)
+        setRides(driverRides)
+      }
+    } catch (error) {
+      console.error('Error loading rides:', error)
+      // Fallback to regular user view on error
+      const driverRides = await supabaseDb.getRidesByDriver(user.id)
+      setRides(driverRides)
+    } finally {
+      setIsLoadingAdmin(false)
+    }
+  }
+
   const loadRides = async () => {
-    if (user) {
+    if (!user) return
+
+    if (isAdmin) {
+      // Admin: Reload all rides
+      try {
+        const allRides = await supabaseDb.getAllRidesAdmin(user.id)
+        setRides(allRides)
+      } catch (error) {
+        console.error('Error loading admin rides:', error)
+      }
+    } else {
+      // Regular user: Load only their own rides
       const driverRides = await supabaseDb.getRidesByDriver(user.id)
       setRides(driverRides)
     }
@@ -110,7 +152,7 @@ export default function DriverPage() {
     }
   }
 
-  if (!user) {
+  if (!user || isLoadingAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg">Loading...</div>
@@ -118,17 +160,22 @@ export default function DriverPage() {
     )
   }
 
-  if (!user) {
-    return null
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-x-hidden w-full max-w-full">
       <Navigation />
       <div className="w-full max-w-full px-3 sm:px-4 py-4 sm:py-8 mx-auto overflow-x-hidden">
         <div className="mb-4 sm:mb-8 w-full max-w-full">
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary break-words">Driver Dashboard</h1>
-          <p className="text-sm sm:text-base text-muted-foreground break-words">Manage your rides and passengers</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold text-primary break-words">Driver Dashboard</h1>
+            {isAdmin && (
+              <span className="px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-800 rounded-md">
+                ADMIN MODE
+              </span>
+            )}
+          </div>
+          <p className="text-sm sm:text-base text-muted-foreground break-words">
+            {isAdmin ? 'Viewing all rides from all drivers' : 'Manage your rides and passengers'}
+          </p>
         </div>
 
         <div className="mb-4 sm:mb-6 w-full max-w-full">
@@ -238,6 +285,11 @@ export default function DriverPage() {
                       <CardDescription className="text-xs sm:text-sm break-words">
                         {ride.direction === 'to-school' ? 'To university' : 'From university'}
                       </CardDescription>
+                      {isAdmin && ride.driverId !== user.id && (
+                        <CardDescription className="text-xs text-muted-foreground mt-1 break-words">
+                          Driver: {ride.driverName}
+                        </CardDescription>
+                      )}
                     </div>
                     <Button
                       variant="ghost"
