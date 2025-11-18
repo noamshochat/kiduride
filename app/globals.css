@@ -71,5 +71,19 @@
     max-width: 100%;
     overflow-x: hidden;
   }
+  /* Ensure all elements use border-box */
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  /* Force grid items to respect container width */
+  .grid > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  /* Prevent images and media from overflowing */
+  img, video, iframe {
+    max-width: 100%;
+    height: auto;
+  }
 }
 

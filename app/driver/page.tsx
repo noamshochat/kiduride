@@ -123,15 +123,15 @@ export default function DriverPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-x-hidden w-full max-w-full">
       <Navigation />
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-full overflow-x-hidden">
-        <div className="mb-4 sm:mb-8">
+      <div className="w-full max-w-full px-3 sm:px-4 py-4 sm:py-8 mx-auto overflow-x-hidden">
+        <div className="mb-4 sm:mb-8 w-full max-w-full">
           <h1 className="text-2xl sm:text-3xl font-bold text-primary break-words">Driver Dashboard</h1>
           <p className="text-sm sm:text-base text-muted-foreground break-words">Manage your rides and passengers</p>
         </div>
 
-        <div className="mb-4 sm:mb-6">
+        <div className="mb-4 sm:mb-6 w-full max-w-full">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button className="w-full sm:w-auto">
@@ -219,7 +219,7 @@ export default function DriverPage() {
           </Dialog>
         </div>
 
-        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 w-full">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 w-full max-w-full">
           {rides.length === 0 ? (
             <Card className="col-span-full w-full">
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -228,7 +228,7 @@ export default function DriverPage() {
             </Card>
           ) : (
             rides.map((ride) => (
-              <Card key={ride.id} className="w-full max-w-full overflow-hidden">
+              <Card key={ride.id} className="w-full max-w-full overflow-hidden min-w-0">
                 <CardHeader className="p-4 sm:p-6">
                   <div className="flex justify-between items-start gap-2 min-w-0">
                     <div className="min-w-0 flex-1 overflow-hidden">
