@@ -26,9 +26,9 @@ If you need the API routes to work, consider:
 ## Accessing Your Site
 
 Once deployed, your site will be available at:
-`https://noamshochat.github.io/kidoride/`
+`https://noamshochat.github.io/kiduride/`
 
-Note: The basePath is set to `/kidoride` to match your repository name.
+Note: The basePath is set to `/kiduride` to match your repository name.
 
 ## Local Development
 

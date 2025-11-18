@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'export',
-  basePath: process.env.NODE_ENV === 'production' ? '/kidoride' : '',
+  basePath: process.env.NODE_ENV === 'production' ? '/kiduride' : '',
   images: {
     unoptimized: true,
   },

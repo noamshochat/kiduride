@@ -43,8 +43,8 @@ export interface Passenger {
 
 // Helper functions for localStorage persistence
 const STORAGE_KEYS = {
-  USERS: 'kidoride_users',
-  RIDES: 'kidoride_rides',
+  USERS: 'kiduride_users',
+  RIDES: 'kiduride_rides',
 };
 
 function getStoredUsers(): User[] {
