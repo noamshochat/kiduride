@@ -13,12 +13,12 @@ export function Navigation() {
   if (!user) return null
 
   return (
-    <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-      <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 max-w-full">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold text-primary whitespace-nowrap">KiduRide</h1>
-            <div className="flex gap-1 sm:gap-2 flex-1 min-w-0">
+    <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50 overflow-x-hidden">
+      <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 max-w-full overflow-x-hidden">
+        <div className="flex items-center justify-between flex-wrap gap-2 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 overflow-hidden">
+            <h1 className="text-lg sm:text-xl font-bold text-primary whitespace-nowrap flex-shrink-0">KiduRide</h1>
+            <div className="flex gap-1 sm:gap-2 flex-1 min-w-0 overflow-hidden">
               <Button
                 variant={pathname === '/driver' ? 'default' : 'outline'}
                 size="sm"

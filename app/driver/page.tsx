@@ -123,12 +123,12 @@ export default function DriverPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-x-hidden">
       <Navigation />
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-full">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-full overflow-x-hidden">
         <div className="mb-4 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary">Driver Dashboard</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Manage your rides and passengers</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary break-words">Driver Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground break-words">Manage your rides and passengers</p>
         </div>
 
         <div className="mb-4 sm:mb-6">
@@ -219,23 +219,23 @@ export default function DriverPage() {
           </Dialog>
         </div>
 
-        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 w-full">
           {rides.length === 0 ? (
-            <Card className="col-span-full">
+            <Card className="col-span-full w-full">
               <CardContent className="py-8 text-center text-muted-foreground">
                 No rides created yet. Create your first ride to get started!
               </CardContent>
             </Card>
           ) : (
             rides.map((ride) => (
-              <Card key={ride.id} className="w-full">
+              <Card key={ride.id} className="w-full max-w-full overflow-hidden">
                 <CardHeader className="p-4 sm:p-6">
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="min-w-0 flex-1">
-                      <CardTitle className="text-base sm:text-lg">
+                  <div className="flex justify-between items-start gap-2 min-w-0">
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <CardTitle className="text-base sm:text-lg break-words">
                         {format(new Date(ride.date), 'MMM d, yyyy')}
                       </CardTitle>
-                      <CardDescription className="text-xs sm:text-sm">
+                      <CardDescription className="text-xs sm:text-sm break-words">
                         {ride.direction === 'to-school' ? 'To university' : 'From university'}
                       </CardDescription>
                     </div>
@@ -249,35 +249,35 @@ export default function DriverPage() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-2 sm:space-y-3 p-4 sm:p-6 pt-0">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <span>
+                <CardContent className="space-y-2 sm:space-y-3 p-4 sm:p-6 pt-0 overflow-hidden">
+                  <div className="flex items-center gap-2 text-sm min-w-0">
+                    <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="break-words">
                       {ride.passengers.length} / {ride.totalSeats} seats filled
                     </span>
                   </div>
-                  <div className="text-sm">
-                    <p className="font-medium">Pickup:</p>
-                    <p className="text-muted-foreground">{ride.pickupAddress}</p>
+                  <div className="text-sm min-w-0 overflow-hidden">
+                    <p className="font-medium break-words">Pickup:</p>
+                    <p className="text-muted-foreground break-words break-all">{ride.pickupAddress}</p>
                   </div>
                   {ride.notes && (
-                    <div className="text-sm">
-                      <p className="font-medium">Notes:</p>
-                      <p className="text-muted-foreground">{ride.notes}</p>
+                    <div className="text-sm min-w-0 overflow-hidden">
+                      <p className="font-medium break-words">Notes:</p>
+                      <p className="text-muted-foreground break-words break-all">{ride.notes}</p>
                     </div>
                   )}
                   {ride.passengers.length > 0 && (
-                    <div className="text-sm pt-2 border-t">
-                      <p className="font-medium mb-2">Passengers:</p>
+                    <div className="text-sm pt-2 border-t min-w-0 overflow-hidden">
+                      <p className="font-medium mb-2 break-words">Passengers:</p>
                       <ul className="space-y-2">
                         {ride.passengers.map((passenger) => (
-                          <li key={passenger.id} className="text-muted-foreground">
-                            <div className="font-medium">{passenger.childName}</div>
-                            <div className="text-xs">{passenger.parentName}</div>
+                          <li key={passenger.id} className="text-muted-foreground min-w-0 overflow-hidden">
+                            <div className="font-medium break-words">{passenger.childName}</div>
+                            <div className="text-xs break-words">{passenger.parentName}</div>
                             {passenger.pickupFromHome && passenger.pickupAddress && (
-                              <div className="text-xs mt-1 flex items-center gap-1 text-primary">
-                                <MapPin className="h-3 w-3" />
-                                <span>Home pickup: {passenger.pickupAddress}</span>
+                              <div className="text-xs mt-1 flex items-start gap-1 text-primary min-w-0">
+                                <MapPin className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                                <span className="break-words break-all">Home pickup: {passenger.pickupAddress}</span>
                               </div>
                             )}
                           </li>

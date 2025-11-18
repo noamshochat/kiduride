@@ -61,5 +61,15 @@
     width: 100%;
     max-width: 100vw;
   }
+  /* Ensure proper text wrapping for all languages including Hebrew */
+  [dir] {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  /* Prevent horizontal overflow on containers */
+  .container {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
 }
 
