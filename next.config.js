@@ -2,7 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'export',
-  basePath: process.env.NODE_ENV === 'production' ? '/kiduride' : '',
+  // Only use basePath for GitHub Pages, not for Vercel
+  // Vercel serves from root, GitHub Pages serves from /kiduride subdirectory
+  basePath: process.env.NODE_ENV === 'production' && !process.env.VERCEL ? '/kiduride' : '',
   images: {
     unoptimized: true,
   },
