@@ -3,7 +3,7 @@
 import { useAuth } from '@/components/auth-provider'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Ride } from '@/lib/demo-data'
+import { Ride, User } from '@/lib/demo-data'
 import { supabaseDb } from '@/lib/supabase-db'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,6 +23,7 @@ export default function DriverPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(true)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [usersMap, setUsersMap] = useState<Record<string, User>>({})
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     direction: 'to-school' as 'to-school' | 'from-school',
@@ -30,6 +31,23 @@ export default function DriverPage() {
     pickupAddress: '',
     notes: '',
   })
+
+  // Load users map on mount
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const users = await supabaseDb.getUsers()
+        const map: Record<string, User> = {}
+        users.forEach(u => {
+          map[u.id] = u
+        })
+        setUsersMap(map)
+      } catch (error) {
+        console.error('Error loading users:', error)
+      }
+    }
+    loadUsers()
+  }, [])
 
   useEffect(() => {
     if (user) {
@@ -322,18 +340,35 @@ export default function DriverPage() {
                     <div className="text-sm pt-2 border-t min-w-0 overflow-hidden">
                       <p className="font-medium mb-2 break-words">Passengers:</p>
                       <ul className="space-y-2">
-                        {ride.passengers.map((passenger) => (
-                          <li key={passenger.id} className="text-muted-foreground min-w-0 overflow-hidden">
-                            <div className="font-medium break-words">{passenger.childName}</div>
-                            <div className="text-xs break-words">הורה: {passenger.parentName}</div>
+                        {ride.passengers.map((passenger) => {
+                          const parent = usersMap[passenger.parentId]
+                          const parentPhone = parent?.phone
+                          return (
+                            <li key={passenger.id} className="text-muted-foreground min-w-0 overflow-hidden">
+                              <div className="font-medium break-words">{passenger.childName}</div>
+                              <div className="text-xs break-words">
+                                הורה:{' '}
+                                {parentPhone ? (
+                                  <a 
+                                    href={`tel:${parentPhone}`} 
+                                    className="hover:text-foreground hover:underline"
+                                    title={parentPhone}
+                                  >
+                                    {passenger.parentName}
+                                  </a>
+                                ) : (
+                                  passenger.parentName
+                                )}
+                              </div>
                             {passenger.pickupFromHome && passenger.pickupAddress && (
                               <div className="text-xs mt-1 flex items-start gap-1 text-primary min-w-0">
                                 <MapPin className="h-3 w-3 flex-shrink-0 mt-0.5" />
                                 <span className="break-words break-all">Home pickup: {passenger.pickupAddress}</span>
                               </div>
                             )}
-                          </li>
-                        ))}
+                            </li>
+                          )
+                        })}
                       </ul>
                     </div>
                   )}
