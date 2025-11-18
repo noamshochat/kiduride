@@ -325,7 +325,7 @@ export default function DriverPage() {
                         {ride.passengers.map((passenger) => (
                           <li key={passenger.id} className="text-muted-foreground min-w-0 overflow-hidden">
                             <div className="font-medium break-words">{passenger.childName}</div>
-                            <div className="text-xs break-words">{passenger.parentName}</div>
+                            <div className="text-xs break-words">הורה: {passenger.parentName}</div>
                             {passenger.pickupFromHome && passenger.pickupAddress && (
                               <div className="text-xs mt-1 flex items-start gap-1 text-primary min-w-0">
                                 <MapPin className="h-3 w-3 flex-shrink-0 mt-0.5" />
