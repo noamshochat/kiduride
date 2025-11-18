@@ -17,9 +17,14 @@ If you need the API routes to work, consider:
    - Go to Settings → Pages
    - Source: Select "GitHub Actions"
 
-2. **Add required secrets** (if not already added):
-   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+2. **Add required secrets** (REQUIRED - build will fail without these):
+   - Go to: https://github.com/noamshochat/kiduride/settings/secrets/actions
+   - Click "New repository secret" and add these secrets:
+     - Name: `NEXT_PUBLIC_SUPABASE_URL`
+       Value: Your Supabase project URL (e.g., `https://xxxxx.supabase.co`)
+     - Name: `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+       Value: Your Supabase anonymous/public key
+   - **Important**: These secrets are REQUIRED for the build to succeed. The app uses Supabase for data storage, and these values are baked into the static build.
 
 3. **The deployment will trigger automatically** when you push to the `main` branch.
 
