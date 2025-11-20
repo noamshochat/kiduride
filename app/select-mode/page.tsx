@@ -84,7 +84,8 @@ export default function SelectModePage() {
             </Card>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   )
 }
