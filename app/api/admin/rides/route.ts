@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase'
  * This endpoint validates admin status before returning all rides
  * Frontend must provide userId, and backend validates admin status from database
  */
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)

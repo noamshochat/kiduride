@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase'
  * Link an additional parent to a child
  * POST /api/children/{childId}/parents/{parentId}
  */
+export const dynamic = 'force-dynamic'
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { childId: string; parentId: string } }

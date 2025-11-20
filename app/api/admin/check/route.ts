@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase'
  * This endpoint validates admin status directly from the database
  * Frontend should never trust its own admin status - always check with backend
  */
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await request.json()
