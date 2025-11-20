@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { Ride, Passenger, User } from './demo-data'
+import { Ride, Passenger, User, Child } from './demo-data'
 
 // Database service using Supabase
 export const supabaseDb = {
@@ -80,14 +80,57 @@ export const supabaseDb = {
       }))
     }
 
-    // Group passengers by ride_id
+    // Fetch children with parents for passengers that have child_id
+    const childIds = passengers
+      ?.filter((p: any) => p.child_id)
+      .map((p: any) => p.child_id)
+      .filter((id: string, index: number, self: string[]) => self.indexOf(id) === index) || []
+
+    const childrenWithParents: Record<string, Child> = {}
+    if (childIds.length > 0) {
+      const { data: childrenData, error: childrenError } = await supabase
+        .from('children')
+        .select(`
+          *,
+          child_parents (
+            parent_id,
+            users:parent_id (
+              id,
+              name,
+              email,
+              phone
+            )
+          )
+        `)
+        .in('id', childIds)
+
+      if (!childrenError && childrenData) {
+        childrenData.forEach((child: any) => {
+          childrenWithParents[child.id] = {
+            id: child.id,
+            firstName: child.first_name,
+            lastName: child.last_name || undefined,
+            parentIds: child.child_parents?.map((cp: any) => cp.parent_id) || [],
+            parents: child.child_parents?.map((cp: any) => ({
+              id: cp.users.id,
+              name: cp.users.name,
+              email: cp.users.email,
+              phone: cp.users.phone || undefined,
+            })) || [],
+          }
+        })
+      }
+    }
+
+    // Group passengers by ride_id and enrich with child/parent data
     const passengersByRideId: Record<string, Passenger[]> = {}
     if (passengers) {
       passengers.forEach((passenger: any) => {
         if (!passengersByRideId[passenger.ride_id]) {
           passengersByRideId[passenger.ride_id] = []
         }
-        passengersByRideId[passenger.ride_id].push({
+        
+        const passengerData: Passenger = {
           id: passenger.id,
           childId: passenger.child_id || undefined,
           childName: passenger.child_name,
@@ -95,7 +138,14 @@ export const supabaseDb = {
           parentName: passenger.parent_name,
           pickupFromHome: passenger.pickup_from_home || false,
           pickupAddress: passenger.pickup_address || undefined,
-        })
+        }
+
+        // If passenger has a child_id, attach child with parents
+        if (passenger.child_id && childrenWithParents[passenger.child_id]) {
+          passengerData.child = childrenWithParents[passenger.child_id]
+        }
+
+        passengersByRideId[passenger.ride_id].push(passengerData)
       })
     }
 
@@ -238,12 +288,30 @@ export const supabaseDb = {
       throw new Error('Ride is full')
     }
 
-    // Check for duplicate child name
-    const existingName = ride.passengers.find(
-      (p) => p.childName.toLowerCase() === passenger.childName.toLowerCase()
-    )
-    if (existingName) {
-      throw new Error('Child already assigned to this ride')
+    // If child_id is provided, fetch child name and validate
+    let childName = passenger.childName
+    if (passenger.childId) {
+      const child = await this.getChildWithParents(passenger.childId)
+      if (!child) {
+        throw new Error('Child not found')
+      }
+      // Use child's full name if not provided
+      childName = childName || `${child.firstName}${child.lastName ? ' ' + child.lastName : ''}`
+    }
+
+    // Check for duplicate child (by child_id if provided, or by name)
+    if (passenger.childId) {
+      const existingChild = ride.passengers.find((p) => p.childId === passenger.childId)
+      if (existingChild) {
+        throw new Error('Child already assigned to this ride')
+      }
+    } else {
+      const existingName = ride.passengers.find(
+        (p) => p.childName.toLowerCase() === childName.toLowerCase()
+      )
+      if (existingName) {
+        throw new Error('Child already assigned to this ride')
+      }
     }
 
     // Generate passenger ID in the same format as demo data (p + timestamp)
@@ -256,7 +324,7 @@ export const supabaseDb = {
         id: passengerId,
         ride_id: rideId,
         child_id: passenger.childId || null,
-        child_name: passenger.childName,
+        child_name: childName,
         parent_id: passenger.parentId,
         parent_name: passenger.parentName,
         pickup_from_home: passenger.pickupFromHome || false,
@@ -353,6 +421,99 @@ export const supabaseDb = {
     } catch (error) {
       console.error('Error fetching admin rides:', error)
       throw error
+    }
+  },
+
+  // Children functions
+  async searchChildren(query: string): Promise<Child[]> {
+    try {
+      const response = await fetch(`/api/children/search?query=${encodeURIComponent(query)}`)
+      if (!response.ok) {
+        throw new Error('Failed to search children')
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('Error searching children:', error)
+      throw error
+    }
+  },
+
+  async createChild(child: { firstName: string; lastName?: string; parentIds: string[] }): Promise<Child> {
+    try {
+      const response = await fetch('/api/children', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(child),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create child')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error creating child:', error)
+      throw error
+    }
+  },
+
+  async linkParentToChild(childId: string, parentId: string): Promise<Child> {
+    try {
+      const response = await fetch(`/api/children/${childId}/parents/${parentId}`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to link parent')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error linking parent:', error)
+      throw error
+    }
+  },
+
+  async getChildWithParents(childId: string): Promise<Child | undefined> {
+    try {
+      const { data, error } = await supabase
+        .from('children')
+        .select(`
+          *,
+          child_parents (
+            parent_id,
+            users:parent_id (
+              id,
+              name,
+              email,
+              phone
+            )
+          )
+        `)
+        .eq('id', childId)
+        .single()
+
+      if (error || !data) {
+        return undefined
+      }
+
+      return {
+        id: data.id,
+        firstName: data.first_name,
+        lastName: data.last_name || undefined,
+        parentIds: data.child_parents?.map((cp: any) => cp.parent_id) || [],
+        parents: data.child_parents?.map((cp: any) => ({
+          id: cp.users.id,
+          name: cp.users.name,
+          email: cp.users.email,
+          phone: cp.users.phone || undefined,
+        })) || [],
+      }
+    } catch (error) {
+      console.error('Error fetching child with parents:', error)
+      return undefined
     }
   },
 }

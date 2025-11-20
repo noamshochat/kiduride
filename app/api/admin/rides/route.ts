@@ -73,14 +73,57 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Group passengers by ride_id
+    // Fetch children with parents for passengers that have child_id
+    const childIds = passengers
+      ?.filter((p: any) => p.child_id)
+      .map((p: any) => p.child_id)
+      .filter((id: string, index: number, self: string[]) => self.indexOf(id) === index) || []
+
+    const childrenWithParents: Record<string, any> = {}
+    if (childIds.length > 0) {
+      const { data: childrenData, error: childrenError } = await supabase
+        .from('children')
+        .select(`
+          *,
+          child_parents (
+            parent_id,
+            users:parent_id (
+              id,
+              name,
+              email,
+              phone
+            )
+          )
+        `)
+        .in('id', childIds)
+
+      if (!childrenError && childrenData) {
+        childrenData.forEach((child: any) => {
+          childrenWithParents[child.id] = {
+            id: child.id,
+            firstName: child.first_name,
+            lastName: child.last_name || undefined,
+            parentIds: child.child_parents?.map((cp: any) => cp.parent_id) || [],
+            parents: child.child_parents?.map((cp: any) => ({
+              id: cp.users.id,
+              name: cp.users.name,
+              email: cp.users.email,
+              phone: cp.users.phone || undefined,
+            })) || [],
+          }
+        })
+      }
+    }
+
+    // Group passengers by ride_id and enrich with child/parent data
     const passengersByRideId: Record<string, any[]> = {}
     if (passengers) {
       passengers.forEach((passenger: any) => {
         if (!passengersByRideId[passenger.ride_id]) {
           passengersByRideId[passenger.ride_id] = []
         }
-        passengersByRideId[passenger.ride_id].push({
+        
+        const passengerData: any = {
           id: passenger.id,
           childId: passenger.child_id || undefined,
           childName: passenger.child_name,
@@ -88,7 +131,14 @@ export async function GET(request: NextRequest) {
           parentName: passenger.parent_name,
           pickupFromHome: passenger.pickup_from_home || false,
           pickupAddress: passenger.pickup_address || undefined,
-        })
+        }
+
+        // If passenger has a child_id, attach child with parents
+        if (passenger.child_id && childrenWithParents[passenger.child_id]) {
+          passengerData.child = childrenWithParents[passenger.child_id]
+        }
+
+        passengersByRideId[passenger.ride_id].push(passengerData)
       })
     }
 

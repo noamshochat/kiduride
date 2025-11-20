@@ -343,23 +343,53 @@ export default function DriverPage() {
                         {ride.passengers.map((passenger) => {
                           const parent = usersMap[passenger.parentId]
                           const parentPhone = parent?.phone
+                          // Get parents from child if available, otherwise just show the assigning parent
+                          const childParents = passenger.child?.parents || []
+                          const allParents = childParents.length > 0 
+                            ? childParents 
+                            : parent 
+                              ? [{ id: parent.id, name: parent.name, phone: parent.phone }]
+                              : []
+                          
                           return (
                             <li key={passenger.id} className="text-muted-foreground min-w-0 overflow-hidden">
                               <div className="font-medium break-words">{passenger.childName}</div>
-                              <div className="text-xs break-words">
-                                הורה:{' '}
-                                {parentPhone ? (
-                                  <a 
-                                    href={`tel:${parentPhone}`} 
-                                    className="hover:text-foreground hover:underline"
-                                    title={parentPhone}
-                                  >
-                                    {passenger.parentName}
-                                  </a>
-                                ) : (
-                                  passenger.parentName
-                                )}
-                              </div>
+                              {allParents.length > 0 && (
+                                <div className="text-xs mt-1 space-y-1">
+                                  {allParents.map((p) => (
+                                    <div key={p.id} className="break-words">
+                                      <span className="text-muted-foreground">הורה: </span>
+                                      {p.phone ? (
+                                        <a 
+                                          href={`tel:${p.phone}`} 
+                                          className="hover:text-foreground hover:underline"
+                                          title={p.phone}
+                                        >
+                                          {p.name}
+                                        </a>
+                                      ) : (
+                                        <span>{p.name}</span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {allParents.length === 0 && (
+                                <div className="text-xs break-words">
+                                  הורה:{' '}
+                                  {parentPhone ? (
+                                    <a 
+                                      href={`tel:${parentPhone}`} 
+                                      className="hover:text-foreground hover:underline"
+                                      title={parentPhone}
+                                    >
+                                      {passenger.parentName}
+                                    </a>
+                                  ) : (
+                                    passenger.parentName
+                                  )}
+                                </div>
+                              )}
                             {passenger.pickupFromHome && passenger.pickupAddress && (
                               <div className="text-xs mt-1 flex items-start gap-1 text-primary min-w-0">
                                 <MapPin className="h-3 w-3 flex-shrink-0 mt-0.5" />

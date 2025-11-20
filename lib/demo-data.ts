@@ -12,8 +12,16 @@ export interface User {
 
 export interface Child {
   id: string;
-  name: string;
+  firstName: string;
+  lastName?: string;
+  parentIds?: string[]; // Array of parent IDs (many-to-many)
+  parents?: User[]; // Populated parent objects (when fetched with relations)
+}
+
+export interface ChildParent {
+  childId: string;
   parentId: string;
+  createdAt: string;
 }
 
 export type RideDirection = 'to-school' | 'from-school';
@@ -34,8 +42,9 @@ export interface Ride {
 
 export interface Passenger {
   id: string;
-  childId?: string; // Optional now since children don't need to be pre-registered
-  childName: string;
+  childId?: string; // Reference to registered child (preferred)
+  childName: string; // Child's name (required, denormalized for display)
+  child?: Child; // Populated child object (when fetched with relations)
   parentId: string;
   parentName: string;
   pickupFromHome?: boolean;

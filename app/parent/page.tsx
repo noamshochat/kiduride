@@ -3,8 +3,9 @@
 import { useAuth } from '@/components/auth-provider'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Ride, User } from '@/lib/demo-data'
+import { Ride, User, Child, Passenger } from '@/lib/demo-data'
 import { supabaseDb } from '@/lib/supabase-db'
+import { ChildAutocomplete } from '@/components/child-autocomplete'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -17,7 +18,8 @@ import { Navigation } from '@/components/navigation'
 
 interface ChildEntry {
   id: string
-  name: string
+  child: Child | null // Selected child from autocomplete (preferred)
+  name: string // Fallback name if child is not selected
   pickupFromHome: boolean
   pickupAddress: string
 }
@@ -30,7 +32,7 @@ export default function ParentPage() {
   const [isAssignOpen, setIsAssignOpen] = useState(false)
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
   const [childrenEntries, setChildrenEntries] = useState<ChildEntry[]>([
-    { id: '1', name: '', pickupFromHome: false, pickupAddress: '' }
+    { id: '1', child: null, name: '', pickupFromHome: false, pickupAddress: '' }
   ])
   const [usersMap, setUsersMap] = useState<Record<string, User>>({})
 
@@ -77,7 +79,7 @@ export default function ParentPage() {
   const addChildEntry = () => {
     setChildrenEntries([
       ...childrenEntries,
-      { id: Date.now().toString(), name: '', pickupFromHome: false, pickupAddress: '' }
+      { id: Date.now().toString(), child: null, name: '', pickupFromHome: false, pickupAddress: '' }
     ])
   }
 
@@ -96,11 +98,13 @@ export default function ParentPage() {
   const handleAssignChildren = async () => {
     if (!selectedRide || !user) return
 
-    // Filter out empty names
-    const validEntries = childrenEntries.filter(entry => entry.name.trim() !== '')
+    // Filter out entries without child or name
+    const validEntries = childrenEntries.filter(entry => 
+      entry.child !== null || entry.name.trim() !== ''
+    )
     
     if (validEntries.length === 0) {
-      alert('Please enter at least one child name')
+      alert('Please select or enter at least one child')
       return
     }
 
@@ -110,14 +114,29 @@ export default function ParentPage() {
       return
     }
 
-    // Check for duplicate names in the same ride
+    // Check for duplicate children/names in the same ride
     const existingNames = selectedRide.passengers.map(p => p.childName.toLowerCase())
-    const duplicateNames = validEntries
-      .map(e => e.name.trim().toLowerCase())
-      .filter(name => existingNames.includes(name))
+    const existingChildIds = selectedRide.passengers
+      .filter(p => p.childId)
+      .map(p => p.childId!)
     
-    if (duplicateNames.length > 0) {
-      alert(`The following children are already assigned to this ride: ${duplicateNames.join(', ')}`)
+    const duplicateNames = validEntries
+      .map(e => {
+        if (e.child) {
+          return `${e.child.firstName}${e.child.lastName ? ' ' + e.child.lastName : ''}`.toLowerCase()
+        }
+        return e.name.trim().toLowerCase()
+      })
+      .filter(name => name && existingNames.includes(name))
+    
+    const duplicateChildIds = validEntries
+      .filter(e => e.child?.id)
+      .map(e => e.child!.id)
+      .filter(id => existingChildIds.includes(id))
+    
+    if (duplicateNames.length > 0 || duplicateChildIds.length > 0) {
+      const duplicates = [...duplicateNames, ...duplicateChildIds.map(id => `Child ID: ${id}`)]
+      alert(`The following children are already assigned to this ride: ${duplicates.join(', ')}`)
       return
     }
 
@@ -127,9 +146,15 @@ export default function ParentPage() {
     
     try {
       for (const entry of validEntries) {
+        // Use child from autocomplete if available, otherwise use name
+        const childName = entry.child
+          ? `${entry.child.firstName}${entry.child.lastName ? ' ' + entry.child.lastName : ''}`
+          : entry.name.trim()
+        
         const passenger = {
           id: `p${Date.now()}-${Math.random()}`,
-          childName: entry.name.trim(),
+          childId: entry.child?.id,
+          childName: childName,
           parentId: user.id,
           parentName: user.name,
           pickupFromHome: entry.pickupFromHome,
@@ -158,7 +183,7 @@ export default function ParentPage() {
         await loadRides()
         setIsAssignOpen(false)
         setSelectedRide(null)
-        setChildrenEntries([{ id: '1', name: '', pickupFromHome: false, pickupAddress: '' }])
+        setChildrenEntries([{ id: '1', child: null, name: '', pickupFromHome: false, pickupAddress: '' }])
         alert(`${successCount} child(ren) successfully assigned to ride!`)
       } else {
         alert('Failed to assign children. Ride may be full.')
@@ -207,7 +232,7 @@ export default function ParentPage() {
 
   const openAssignDialog = (ride: Ride) => {
     setSelectedRide(ride)
-    setChildrenEntries([{ id: '1', name: '', pickupFromHome: false, pickupAddress: '' }])
+    setChildrenEntries([{ id: '1', child: null, name: '', pickupFromHome: false, pickupAddress: '' }])
     setIsAssignOpen(true)
   }
 
@@ -398,15 +423,29 @@ export default function ParentPage() {
                         <div className="flex items-start gap-2">
                           <div className="flex-1 space-y-3">
                             <div>
-                              <Label htmlFor={`name-${entry.id}`}>
-                                Child Name {index + 1}
+                              <Label htmlFor={`child-${entry.id}`}>
+                                Child {index + 1} (Search or enter name)
                               </Label>
-                              <Input
-                                id={`name-${entry.id}`}
-                                placeholder="Enter child's name"
-                                value={entry.name}
-                                onChange={(e) => updateChildEntry(entry.id, { name: e.target.value })}
-                              />
+                              <div className="space-y-2">
+                                <ChildAutocomplete
+                                  value={entry.child}
+                                  onChange={(child) => {
+                                    updateChildEntry(entry.id, { 
+                                      child,
+                                      name: child ? `${child.firstName}${child.lastName ? ' ' + child.lastName : ''}` : ''
+                                    })
+                                  }}
+                                  placeholder="Search for a registered child..."
+                                />
+                                {!entry.child && (
+                                  <Input
+                                    id={`name-${entry.id}`}
+                                    placeholder="Or enter child's name manually"
+                                    value={entry.name}
+                                    onChange={(e) => updateChildEntry(entry.id, { name: e.target.value })}
+                                  />
+                                )}
+                              </div>
                             </div>
 
                             <div className="flex items-center space-x-2">
@@ -471,7 +510,7 @@ export default function ParentPage() {
                 disabled={
                   !selectedRide ||
                   selectedRide.availableSeats <= 0 ||
-                  childrenEntries.every(e => e.name.trim() === '')
+                  childrenEntries.every(e => !e.child && e.name.trim() === '')
                 }
               >
                 Assign Children
