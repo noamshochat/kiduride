@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Car, Users } from 'lucide-react'
 import { useEffect } from 'react'
+import { Navigation } from '@/components/navigation'
 
 export default function SelectModePage() {
   const { user, isLoading } = useAuth()
@@ -26,8 +27,10 @@ export default function SelectModePage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-2xl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <Navigation />
+      <div className="flex items-center justify-center p-4 min-h-[calc(100vh-64px)]">
+        <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold text-primary">Welcome, {user.name}!</CardTitle>
           <CardDescription>
