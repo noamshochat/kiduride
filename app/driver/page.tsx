@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format } from 'date-fns'
 import { Plus, Trash2, Users, MapPin } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
+import { ShareButton } from '@/components/share-button'
 
 export default function DriverPage() {
   const { user, logout } = useAuth()
@@ -309,14 +310,23 @@ export default function DriverPage() {
                         </CardDescription>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteRide(ride.id)}
-                      className="text-destructive flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
-                    >
-                      <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                    </Button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {ride.driverId === user.id && (
+                        <ShareButton
+                          ride={ride}
+                          driverName={ride.driverName}
+                          className="h-8 w-8 sm:h-10 sm:w-auto"
+                        />
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteRide(ride.id)}
+                        className="text-destructive flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
+                      >
+                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2 sm:space-y-3 p-4 sm:p-6 pt-0 overflow-hidden">
