@@ -67,28 +67,45 @@ export default function DriverPage() {
     if (!user) return
 
     setIsLoadingAdmin(true)
+    let adminStatus = false
     try {
       // Check admin status via backend API (never trust frontend)
       console.log('Checking admin status for user:', user.id, user.email)
-      const adminStatus = await supabaseDb.checkIsAdmin(user.id)
+      adminStatus = await supabaseDb.checkIsAdmin(user.id)
       console.log('Admin status result:', adminStatus)
       setIsAdmin(adminStatus)
 
       // Load rides based on admin status
       if (adminStatus) {
         // Admin: Load all rides from all drivers
+        console.log('Loading all rides as admin...')
         const loadedRides = await supabaseDb.getAllRidesAdmin(user.id)
+        console.log('Loaded admin rides:', loadedRides.length, 'rides')
         setAllRides(loadedRides)
       } else {
         // Regular user: Load only their own rides
+        console.log('Loading user rides (not admin)...')
         const driverRides = await supabaseDb.getRidesByDriver(user.id)
+        console.log('Loaded user rides:', driverRides.length, 'rides')
         setAllRides(driverRides)
       }
     } catch (error) {
       console.error('Error loading rides:', error)
-      // Fallback to regular user view on error
-      const driverRides = await supabaseDb.getRidesByDriver(user.id)
-      setRides(driverRides)
+      // If we confirmed admin status but API failed, don't fall back to user rides
+      // Show empty state instead so user knows something is wrong
+      if (adminStatus) {
+        console.error('Admin API failed, but admin status confirmed. Not falling back to user rides.')
+        setAllRides([])
+      } else {
+        // If not admin or admin check failed, try to load user's own rides as fallback
+        try {
+          const driverRides = await supabaseDb.getRidesByDriver(user.id)
+          setAllRides(driverRides)
+        } catch (fallbackError) {
+          console.error('Error loading fallback rides:', fallbackError)
+          setAllRides([])
+        }
+      }
     } finally {
       setIsLoadingAdmin(false)
     }
@@ -114,21 +131,11 @@ export default function DriverPage() {
 
   // Filter rides by selected date (date filter always applies)
   useEffect(() => {
-    // Always filter by selected date first
+    // Always filter by selected date
     const dateFiltered = allRides.filter(ride => ride.date === selectedDate)
-    
-    if (isAdmin && showAllRides) {
-      // Admin mode with "show all": show all rides from all drivers for the selected date
-      setRides(dateFiltered)
-    } else if (isAdmin && !showAllRides) {
-      // Admin mode without "show all": still show all rides from all drivers for the selected date
-      // (same as above, but keeping the logic clear)
-      setRides(dateFiltered)
-    } else {
-      // Regular user: show only their own rides for the selected date
-      setRides(dateFiltered)
-    }
-  }, [allRides, selectedDate, isAdmin, showAllRides])
+    console.log('Filtering rides - Total:', allRides.length, 'Filtered by date:', dateFiltered.length, 'Date:', selectedDate, 'IsAdmin:', isAdmin)
+    setRides(dateFiltered)
+  }, [allRides, selectedDate, isAdmin])
 
   const handleCreateRide = async () => {
     if (!user) return
