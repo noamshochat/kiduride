@@ -112,15 +112,21 @@ export default function DriverPage() {
     }
   }
 
-  // Filter rides by selected date (unless admin mode with "show all" enabled)
+  // Filter rides by selected date (date filter always applies)
   useEffect(() => {
+    // Always filter by selected date first
+    const dateFiltered = allRides.filter(ride => ride.date === selectedDate)
+    
     if (isAdmin && showAllRides) {
-      // Admin mode: show all rides
-      setRides(allRides)
+      // Admin mode with "show all": show all rides from all drivers for the selected date
+      setRides(dateFiltered)
+    } else if (isAdmin && !showAllRides) {
+      // Admin mode without "show all": still show all rides from all drivers for the selected date
+      // (same as above, but keeping the logic clear)
+      setRides(dateFiltered)
     } else {
-      // Filter by selected date
-      const filtered = allRides.filter(ride => ride.date === selectedDate)
-      setRides(filtered)
+      // Regular user: show only their own rides for the selected date
+      setRides(dateFiltered)
     }
   }, [allRides, selectedDate, isAdmin, showAllRides])
 
@@ -235,20 +241,14 @@ export default function DriverPage() {
                   htmlFor="show-all-rides"
                   className="text-sm font-normal cursor-pointer"
                 >
-                  Show all rides ({allRides.length} total)
+                  Show all drivers' rides for selected date ({allRides.filter(r => r.date === selectedDate).length} rides)
                 </Label>
               </div>
             )}
             <Input
               type="date"
               value={selectedDate}
-              onChange={(e) => {
-                setSelectedDate(e.target.value)
-                // When date changes, uncheck "show all" to apply date filter
-                if (isAdmin && showAllRides) {
-                  setShowAllRides(false)
-                }
-              }}
+              onChange={(e) => setSelectedDate(e.target.value)}
               className="max-w-xs"
             />
           </CardContent>
