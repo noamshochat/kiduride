@@ -16,6 +16,7 @@ import { format } from 'date-fns'
 import { Plus, Trash2, Users, MapPin, Calendar } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { ShareButton } from '@/components/share-button'
+import { AddToCalendarButton } from '@/components/add-to-calendar-button'
 
 export default function DriverPage() {
   const { user, logout } = useAuth()
@@ -342,11 +343,18 @@ export default function DriverPage() {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {ride.driverId === user.id && (
-                        <ShareButton
-                          ride={ride}
-                          driverName={ride.driverName}
-                          className="h-8 w-8 sm:h-10 sm:w-auto"
-                        />
+                        <>
+                          <AddToCalendarButton
+                            ride={ride}
+                            driverName={ride.driverName}
+                            className="h-8 w-8 sm:h-10 sm:w-auto"
+                          />
+                          <ShareButton
+                            ride={ride}
+                            driverName={ride.driverName}
+                            className="h-8 w-8 sm:h-10 sm:w-auto"
+                          />
+                        </>
                       )}
                       <Button
                         variant="ghost"
