@@ -242,9 +242,14 @@ export default function DriverPage() {
             <Input
               type="date"
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e) => {
+                setSelectedDate(e.target.value)
+                // When date changes, uncheck "show all" to apply date filter
+                if (isAdmin && showAllRides) {
+                  setShowAllRides(false)
+                }
+              }}
               className="max-w-xs"
-              disabled={isAdmin && showAllRides}
             />
           </CardContent>
         </Card>
