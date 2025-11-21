@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export function middleware(request: NextRequest) {
+  // In development mode, allow all traffic (for local testing)
+  if (process.env.NODE_ENV === 'development') {
+    return NextResponse.next()
+  }
+
   // Get country code from Vercel's geolocation headers
   const country = request.geo?.country || request.headers.get('x-vercel-ip-country')
 
   // Allow only traffic from Israel (IL)
-  if (country !== 'IL') {
+  // If country is not available (shouldn't happen on Vercel), allow the request
+  if (country && country !== 'IL') {
     // Redirect to access denied page
     return NextResponse.redirect(new URL('/access-denied', request.url))
   }

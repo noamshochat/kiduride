@@ -13,14 +13,16 @@ import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
-import { Plus, Trash2, Users, MapPin } from 'lucide-react'
+import { Plus, Trash2, Users, MapPin, Calendar } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { ShareButton } from '@/components/share-button'
 
 export default function DriverPage() {
   const { user, logout } = useAuth()
   const router = useRouter()
-  const [rides, setRides] = useState<Ride[]>([])
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [allRides, setAllRides] = useState<Ride[]>([]) // Store all rides
+  const [rides, setRides] = useState<Ride[]>([]) // Filtered rides by date
   const [isAdmin, setIsAdmin] = useState(false)
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(true)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -64,18 +66,20 @@ export default function DriverPage() {
     setIsLoadingAdmin(true)
     try {
       // Check admin status via backend API (never trust frontend)
+      console.log('Checking admin status for user:', user.id, user.email)
       const adminStatus = await supabaseDb.checkIsAdmin(user.id)
+      console.log('Admin status result:', adminStatus)
       setIsAdmin(adminStatus)
 
       // Load rides based on admin status
       if (adminStatus) {
         // Admin: Load all rides from all drivers
-        const allRides = await supabaseDb.getAllRidesAdmin(user.id)
-        setRides(allRides)
+        const loadedRides = await supabaseDb.getAllRidesAdmin(user.id)
+        setAllRides(loadedRides)
       } else {
         // Regular user: Load only their own rides
         const driverRides = await supabaseDb.getRidesByDriver(user.id)
-        setRides(driverRides)
+        setAllRides(driverRides)
       }
     } catch (error) {
       console.error('Error loading rides:', error)
@@ -93,17 +97,23 @@ export default function DriverPage() {
     if (isAdmin) {
       // Admin: Reload all rides
       try {
-        const allRides = await supabaseDb.getAllRidesAdmin(user.id)
-        setRides(allRides)
+        const loadedRides = await supabaseDb.getAllRidesAdmin(user.id)
+        setAllRides(loadedRides)
       } catch (error) {
         console.error('Error loading admin rides:', error)
       }
     } else {
       // Regular user: Load only their own rides
       const driverRides = await supabaseDb.getRidesByDriver(user.id)
-      setRides(driverRides)
+      setAllRides(driverRides)
     }
   }
+
+  // Filter rides by selected date
+  useEffect(() => {
+    const filtered = allRides.filter(ride => ride.date === selectedDate)
+    setRides(filtered)
+  }, [allRides, selectedDate])
 
   const handleCreateRide = async () => {
     if (!user) return
@@ -197,6 +207,23 @@ export default function DriverPage() {
           </p>
         </div>
 
+        <Card className="mb-4 sm:mb-6 w-full max-w-full">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
+              Select Date
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="max-w-xs"
+            />
+          </CardContent>
+        </Card>
+
         <div className="mb-4 sm:mb-6 w-full max-w-full">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
@@ -289,7 +316,10 @@ export default function DriverPage() {
           {rides.length === 0 ? (
             <Card className="col-span-full w-full">
               <CardContent className="py-8 text-center text-muted-foreground">
-                No rides created yet. Create your first ride to get started!
+                {allRides.length === 0 
+                  ? 'No rides created yet. Create your first ride to get started!'
+                  : `No rides found for ${format(new Date(selectedDate), 'MMM d, yyyy')}. Try selecting a different date.`
+                }
               </CardContent>
             </Card>
           ) : (

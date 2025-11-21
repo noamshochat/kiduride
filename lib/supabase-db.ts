@@ -386,6 +386,7 @@ export const supabaseDb = {
   // Admin functions - these check admin status via API (backend validation)
   async checkIsAdmin(userId: string): Promise<boolean> {
     try {
+      console.log('[checkIsAdmin] Checking admin status for userId:', userId)
       // Call backend API to check admin status - never trust frontend
       const response = await fetch('/api/admin/check', {
         method: 'POST',
@@ -393,14 +394,19 @@ export const supabaseDb = {
         body: JSON.stringify({ userId }),
       })
 
+      console.log('[checkIsAdmin] Response status:', response.status, response.statusText)
+
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[checkIsAdmin] API error:', response.status, errorText)
         return false
       }
 
       const data = await response.json()
+      console.log('[checkIsAdmin] API response data:', data)
       return data.isAdmin === true
     } catch (error) {
-      console.error('Error checking admin status:', error)
+      console.error('[checkIsAdmin] Error checking admin status:', error)
       return false
     }
   },
