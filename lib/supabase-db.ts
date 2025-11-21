@@ -62,12 +62,6 @@ export const supabaseDb = {
       return []
     }
 
-    console.log('[getRides] Fetched rides from DB:', rides?.length || 0, 'rides')
-    if (rides) {
-      console.log('[getRides] Ride dates:', rides.map((r: any) => r.date))
-      console.log('[getRides] Ride IDs:', rides.map((r: any) => r.id))
-    }
-
     if (!rides || rides.length === 0) {
       return []
     }
@@ -392,7 +386,6 @@ export const supabaseDb = {
   // Admin functions - these check admin status via API (backend validation)
   async checkIsAdmin(userId: string): Promise<boolean> {
     try {
-      console.log('[checkIsAdmin] Checking admin status for userId:', userId)
       // Call backend API to check admin status - never trust frontend
       const response = await fetch('/api/admin/check', {
         method: 'POST',
@@ -400,19 +393,14 @@ export const supabaseDb = {
         body: JSON.stringify({ userId }),
       })
 
-      console.log('[checkIsAdmin] Response status:', response.status, response.statusText)
-
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('[checkIsAdmin] API error:', response.status, errorText)
         return false
       }
 
       const data = await response.json()
-      console.log('[checkIsAdmin] API response data:', data)
       return data.isAdmin === true
     } catch (error) {
-      console.error('[checkIsAdmin] Error checking admin status:', error)
+      console.error('Error checking admin status:', error)
       return false
     }
   },
@@ -420,28 +408,18 @@ export const supabaseDb = {
   async getAllRidesAdmin(userId: string): Promise<Ride[]> {
     try {
       // Call backend API - backend validates admin status before returning data
-      const apiUrl = `/api/admin/rides?userId=${encodeURIComponent(userId)}`
-      console.log('[getAllRidesAdmin] Calling API:', apiUrl)
-      const response = await fetch(apiUrl)
-
-      console.log('[getAllRidesAdmin] Response status:', response.status, response.statusText)
+      const response = await fetch(`/api/admin/rides?userId=${encodeURIComponent(userId)}`)
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('[getAllRidesAdmin] API error response:', errorText)
         if (response.status === 403) {
           throw new Error('Unauthorized: Admin access required')
         }
-        throw new Error(`Failed to fetch admin rides: ${response.status} ${errorText}`)
+        throw new Error('Failed to fetch admin rides')
       }
 
-      const rides = await response.json()
-      console.log('[getAllRidesAdmin] Received rides from API:', rides.length, 'rides')
-      console.log('[getAllRidesAdmin] Ride dates:', rides.map((r: Ride) => r.date))
-      console.log('[getAllRidesAdmin] Ride IDs:', rides.map((r: Ride) => r.id))
-      return rides
+      return await response.json()
     } catch (error) {
-      console.error('[getAllRidesAdmin] Error fetching admin rides:', error)
+      console.error('Error fetching admin rides:', error)
       throw error
     }
   },

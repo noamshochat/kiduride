@@ -70,44 +70,29 @@ export default function DriverPage() {
     let adminStatus = false
     try {
       // Check admin status via backend API (never trust frontend)
-      console.log('Checking admin status for user:', user.id, user.email)
       adminStatus = await supabaseDb.checkIsAdmin(user.id)
-      console.log('Admin status result:', adminStatus)
       setIsAdmin(adminStatus)
 
       // Load rides based on admin status
       if (adminStatus) {
         // Admin: Load all rides from all drivers
-        console.log('Loading all rides as admin...')
         const loadedRides = await supabaseDb.getAllRidesAdmin(user.id)
-        console.log('Loaded admin rides:', loadedRides.length, 'rides')
-        console.log('Admin rides details:', loadedRides.map(r => ({ id: r.id, date: r.date, driver: r.driverName })))
         setAllRides(loadedRides)
       } else {
         // Regular user: Load only their own rides
-        console.log('Loading user rides (not admin)...')
         const driverRides = await supabaseDb.getRidesByDriver(user.id)
-        console.log('Loaded user rides:', driverRides.length, 'rides')
         setAllRides(driverRides)
       }
     } catch (error: any) {
       console.error('Error loading rides:', error)
-      console.error('Error details:', {
-        message: error?.message,
-        stack: error?.stack,
-        adminStatus,
-        userId: user.id
-      })
       // If we confirmed admin status but API failed, don't fall back to user rides
       // Show empty state instead so user knows something is wrong
       if (adminStatus) {
         console.error('Admin API failed, but admin status confirmed. Not falling back to user rides.')
-        console.error('This might indicate an API route issue on Vercel. Check server logs.')
         setAllRides([])
       } else {
         // If not admin or admin check failed, try to load user's own rides as fallback
         try {
-          console.log('Falling back to user rides (not admin)')
           const driverRides = await supabaseDb.getRidesByDriver(user.id)
           setAllRides(driverRides)
         } catch (fallbackError) {
@@ -142,9 +127,8 @@ export default function DriverPage() {
   useEffect(() => {
     // Always filter by selected date
     const dateFiltered = allRides.filter(ride => ride.date === selectedDate)
-    console.log('Filtering rides - Total:', allRides.length, 'Filtered by date:', dateFiltered.length, 'Date:', selectedDate, 'IsAdmin:', isAdmin)
     setRides(dateFiltered)
-  }, [allRides, selectedDate, isAdmin])
+  }, [allRides, selectedDate])
 
   const handleCreateRide = async () => {
     if (!user) return

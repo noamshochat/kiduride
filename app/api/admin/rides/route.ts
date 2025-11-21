@@ -46,12 +46,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch rides' }, { status: 500 })
     }
 
-    console.log('[admin/rides API] Fetched rides from DB:', rides?.length || 0, 'rides')
-    if (rides) {
-      console.log('[admin/rides API] Ride dates:', rides.map((r: any) => r.date))
-      console.log('[admin/rides API] Ride IDs:', rides.map((r: any) => r.id))
-    }
-
     if (!rides || rides.length === 0) {
       return NextResponse.json([])
     }
