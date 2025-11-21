@@ -81,6 +81,7 @@ export default function DriverPage() {
         console.log('Loading all rides as admin...')
         const loadedRides = await supabaseDb.getAllRidesAdmin(user.id)
         console.log('Loaded admin rides:', loadedRides.length, 'rides')
+        console.log('Admin rides details:', loadedRides.map(r => ({ id: r.id, date: r.date, driver: r.driverName })))
         setAllRides(loadedRides)
       } else {
         // Regular user: Load only their own rides
@@ -89,16 +90,24 @@ export default function DriverPage() {
         console.log('Loaded user rides:', driverRides.length, 'rides')
         setAllRides(driverRides)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading rides:', error)
+      console.error('Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        adminStatus,
+        userId: user.id
+      })
       // If we confirmed admin status but API failed, don't fall back to user rides
       // Show empty state instead so user knows something is wrong
       if (adminStatus) {
         console.error('Admin API failed, but admin status confirmed. Not falling back to user rides.')
+        console.error('This might indicate an API route issue on Vercel. Check server logs.')
         setAllRides([])
       } else {
         // If not admin or admin check failed, try to load user's own rides as fallback
         try {
+          console.log('Falling back to user rides (not admin)')
           const driverRides = await supabaseDb.getRidesByDriver(user.id)
           setAllRides(driverRides)
         } catch (fallbackError) {
