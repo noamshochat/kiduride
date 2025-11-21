@@ -17,11 +17,13 @@ import { Plus, Trash2, Users, MapPin, Calendar } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { ShareButton } from '@/components/share-button'
 import { AddToCalendarButton } from '@/components/add-to-calendar-button'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export default function DriverPage() {
   const { user, logout } = useAuth()
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [showAllRides, setShowAllRides] = useState(false) // Admin: show all rides or filter by date
   const [allRides, setAllRides] = useState<Ride[]>([]) // Store all rides
   const [rides, setRides] = useState<Ride[]>([]) // Filtered rides by date
   const [isAdmin, setIsAdmin] = useState(false)
@@ -110,11 +112,17 @@ export default function DriverPage() {
     }
   }
 
-  // Filter rides by selected date
+  // Filter rides by selected date (unless admin mode with "show all" enabled)
   useEffect(() => {
-    const filtered = allRides.filter(ride => ride.date === selectedDate)
-    setRides(filtered)
-  }, [allRides, selectedDate])
+    if (isAdmin && showAllRides) {
+      // Admin mode: show all rides
+      setRides(allRides)
+    } else {
+      // Filter by selected date
+      const filtered = allRides.filter(ride => ride.date === selectedDate)
+      setRides(filtered)
+    }
+  }, [allRides, selectedDate, isAdmin, showAllRides])
 
   const handleCreateRide = async () => {
     if (!user) return
@@ -212,15 +220,31 @@ export default function DriverPage() {
           <CardHeader className="p-4 sm:p-6">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-              Select Date
+              {isAdmin ? 'Filter Rides' : 'Select Date'}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 sm:p-6 pt-0">
+          <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
+            {isAdmin && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="show-all-rides"
+                  checked={showAllRides}
+                  onCheckedChange={(checked) => setShowAllRides(checked === true)}
+                />
+                <Label
+                  htmlFor="show-all-rides"
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Show all rides ({allRides.length} total)
+                </Label>
+              </div>
+            )}
             <Input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="max-w-xs"
+              disabled={isAdmin && showAllRides}
             />
           </CardContent>
         </Card>
@@ -319,7 +343,9 @@ export default function DriverPage() {
               <CardContent className="py-8 text-center text-muted-foreground">
                 {allRides.length === 0 
                   ? 'No rides created yet. Create your first ride to get started!'
-                  : `No rides found for ${format(new Date(selectedDate), 'MMM d, yyyy')}. Try selecting a different date.`
+                  : isAdmin && showAllRides
+                    ? 'No rides found. Create a ride to get started!'
+                    : `No rides found for ${format(new Date(selectedDate), 'MMM d, yyyy')}. Try selecting a different date.`
                 }
               </CardContent>
             </Card>
