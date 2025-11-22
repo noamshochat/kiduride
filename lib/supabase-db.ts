@@ -159,6 +159,7 @@ export const supabaseDb = {
       availableSeats: ride.available_seats,
       totalSeats: ride.total_seats,
       pickupAddress: ride.pickup_address,
+      pickupTime: ride.pickup_time || undefined,
       notes: ride.notes || undefined,
       passengers: passengersByRideId[ride.id] || [],
       createdAt: ride.created_at,
@@ -209,6 +210,7 @@ export const supabaseDb = {
       availableSeats: ride.available_seats,
       totalSeats: ride.total_seats,
       pickupAddress: ride.pickup_address,
+      pickupTime: ride.pickup_time || undefined,
       notes: ride.notes || undefined,
       passengers: ridePassengers,
       createdAt: ride.created_at,
@@ -235,6 +237,7 @@ export const supabaseDb = {
         total_seats: ride.totalSeats,
         available_seats: ride.availableSeats,
         pickup_address: ride.pickupAddress,
+        pickup_time: ride.pickupTime || null,
         notes: ride.notes || null,
       })
       .select()
@@ -254,6 +257,7 @@ export const supabaseDb = {
       availableSeats: data.available_seats,
       totalSeats: data.total_seats,
       pickupAddress: data.pickup_address,
+      pickupTime: data.pickup_time || undefined,
       notes: data.notes || undefined,
       passengers: [],
       createdAt: data.created_at,

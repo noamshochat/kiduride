@@ -154,6 +154,7 @@ export async function GET(request: NextRequest) {
       availableSeats: ride.available_seats,
       totalSeats: ride.total_seats,
       pickupAddress: ride.pickup_address,
+      pickupTime: ride.pickup_time || undefined,
       notes: ride.notes || undefined,
       passengers: passengersByRideId[ride.id] || [],
       createdAt: ride.created_at,

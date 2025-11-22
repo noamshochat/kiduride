@@ -35,6 +35,7 @@ export interface Ride {
   availableSeats: number;
   totalSeats: number;
   pickupAddress: string;
+  pickupTime?: string; // Time in HH:MM format (24-hour)
   notes?: string;
   passengers: Passenger[];
   createdAt: string;

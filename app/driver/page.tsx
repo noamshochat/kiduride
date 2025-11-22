@@ -35,6 +35,7 @@ export default function DriverPage() {
     direction: 'to-school' as 'to-school' | 'from-school',
     totalSeats: 0,
     pickupAddress: '',
+    pickupTime: '',
     notes: '',
   })
 
@@ -145,7 +146,7 @@ export default function DriverPage() {
     }
 
     try {
-      await supabaseDb.createRide({
+      const createdRide = await supabaseDb.createRide({
         driverId: user.id,
         driverName: user.name,
         date: formData.date,
@@ -153,9 +154,13 @@ export default function DriverPage() {
         availableSeats: formData.totalSeats,
         totalSeats: formData.totalSeats,
         pickupAddress: formData.pickupAddress,
+        pickupTime: formData.pickupTime || undefined,
         notes: formData.notes || undefined,
       })
 
+      // Update selected date to match the created ride's date so it appears immediately
+      setSelectedDate(createdRide.date)
+      
       // Reload rides from storage to ensure consistency
       await loadRides()
       setIsCreateOpen(false)
@@ -164,6 +169,7 @@ export default function DriverPage() {
         direction: 'to-school',
         totalSeats: 0,
         pickupAddress: '',
+        pickupTime: '',
         notes: '',
       })
     } catch (error: any) {
@@ -318,6 +324,19 @@ export default function DriverPage() {
                     placeholder="123 Main St, City"
                     className="w-full"
                   />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="pickupTime">Pickup Time (Optional)</Label>
+                  <Input
+                    id="pickupTime"
+                    type="time"
+                    value={formData.pickupTime}
+                    onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    If not specified, default times will be used (8:00 AM for to-school, 3:00 PM for from-school)
+                  </p>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="notes">Notes (Optional)</Label>

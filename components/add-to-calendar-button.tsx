@@ -16,13 +16,19 @@ export function AddToCalendarButton({ ride, driverName, className }: AddToCalend
     // Parse the ride date (ISO format: YYYY-MM-DD)
     const rideDate = parseISO(ride.date)
     
-    // Set default times based on direction
-    // To school: 8:00 AM, From school: 3:00 PM
+    // Use pickup time if available, otherwise use default times based on direction
     const startTime = new Date(rideDate)
-    if (ride.direction === 'to-school') {
-      startTime.setHours(8, 0, 0, 0)
+    if (ride.pickupTime) {
+      // Parse pickup time (HH:MM format)
+      const [hours, minutes] = ride.pickupTime.split(':').map(Number)
+      startTime.setHours(hours, minutes || 0, 0, 0)
     } else {
-      startTime.setHours(15, 0, 0, 0)
+      // Default times: To school: 8:00 AM, From school: 3:00 PM
+      if (ride.direction === 'to-school') {
+        startTime.setHours(8, 0, 0, 0)
+      } else {
+        startTime.setHours(15, 0, 0, 0)
+      }
     }
     
     // End time: 1 hour later
