@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 /**
  * Check if a user is an admin
@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
     }
 
-    // Check admin status directly from database
-    const { data, error } = await supabase
+    // Check admin status directly from database using admin client (bypasses RLS)
+    const { data, error } = await supabaseAdmin
       .from('users')
       .select('is_admin')
       .eq('id', userId)

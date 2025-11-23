@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseAdmin } from '@/lib/supabase'
 
 /**
  * Get all rides (admin only)
@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
     }
 
     // CRITICAL: Check admin status directly from database - never trust frontend
-    const { data: userData, error: userError } = await supabase
+    // Use admin client to bypass RLS when checking admin status
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('is_admin')
       .eq('id', userId)
@@ -34,8 +35,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 })
     }
 
-    // User is confirmed admin - fetch all rides
-    const { data: rides, error: ridesError } = await supabase
+    // User is confirmed admin - fetch all rides using admin client (bypasses RLS)
+    // Use admin client to ensure we get ALL rides regardless of RLS policies
+    const { data: rides, error: ridesError } = await supabaseAdmin
       .from('rides')
       .select('*')
       .order('date', { ascending: true })
@@ -55,8 +57,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([])
     }
 
-    // Fetch passengers for all rides
-    const { data: passengers, error: passengersError } = await supabase
+    // Fetch passengers for all rides using admin client
+    const { data: passengers, error: passengersError } = await supabaseAdmin
       .from('passengers')
       .select('*')
 
@@ -88,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     const childrenWithParents: Record<string, any> = {}
     if (childIds.length > 0) {
-      const { data: childrenData, error: childrenError } = await supabase
+      const { data: childrenData, error: childrenError } = await supabaseAdmin
         .from('children')
         .select(`
           *,
