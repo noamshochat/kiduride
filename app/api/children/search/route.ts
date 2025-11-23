@@ -18,38 +18,38 @@ export async function GET(request: NextRequest) {
     }
 
     const searchTerm = query.trim()
-    const searchPattern = `%${searchTerm}%`
 
-    // Search in first_name and last_name (case-insensitive via ilike)
-    // Note: ilike is case-insensitive, so no need for toLowerCase()
-    // This is especially important for Hebrew text which doesn't have case
+    // Fetch all children and filter in JavaScript for reliable Hebrew text matching
+    // This approach is more reliable than relying on Supabase's ilike pattern matching
+    // which can have issues with Hebrew characters in production environments
     const { data, error } = await supabase
       .from('children')
       .select('*')
-      .or(`first_name.ilike.${searchPattern},last_name.ilike.${searchPattern}`)
       .order('first_name', { ascending: true })
       .order('last_name', { ascending: true })
-      .limit(50) // Limit results
+      .limit(200) // Fetch more records to filter client-side
 
     if (error) {
       console.error('Error searching children:', error)
       return NextResponse.json({ error: 'Failed to search children' }, { status: 500 })
     }
 
-    // Also filter by full name concatenation in JavaScript for better Hebrew support
-    // This ensures we catch matches like "אריאל ורשבסקי" when searching for "אריאל"
+    // Filter by first name, last name, and full name concatenation in JavaScript
+    // This ensures reliable matching for Hebrew text regardless of database collation
     // Note: For Hebrew text, case doesn't exist, so direct string matching is fine
     const filteredData = (data || []).filter((child: any) => {
-      const firstName = child.first_name || ''
-      const lastName = child.last_name || ''
+      const firstName = (child.first_name || '').trim()
+      const lastName = (child.last_name || '').trim()
       const fullName = `${firstName} ${lastName}`.trim()
+      
       // Direct string matching (Hebrew doesn't have case)
+      // Check if search term appears in first name, last name, or full name
       return (
         firstName.includes(searchTerm) ||
         lastName.includes(searchTerm) ||
         fullName.includes(searchTerm)
       )
-    })
+    }).slice(0, 50) // Limit to 50 results after filtering
 
     // Transform to match our interface
     const children = filteredData.map((child: any) => ({
@@ -58,7 +58,14 @@ export async function GET(request: NextRequest) {
       lastName: child.last_name || undefined,
     }))
 
-    return NextResponse.json(children)
+    // Prevent caching to ensure fresh results
+    return NextResponse.json(children, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    })
   } catch (error) {
     console.error('Error in children search:', error)
     return NextResponse.json({ error: 'Failed to search children' }, { status: 500 })
