@@ -7,6 +7,7 @@ import { supabase, supabaseAdmin } from '@/lib/supabase'
  * Frontend must provide userId, and backend validates admin status from database
  */
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,11 +38,19 @@ export async function GET(request: NextRequest) {
 
     // User is confirmed admin - fetch all rides using admin client (bypasses RLS)
     // Use admin client to ensure we get ALL rides regardless of RLS policies
+    // Add a timestamp to ensure we're not getting cached results
     const { data: rides, error: ridesError } = await supabaseAdmin
       .from('rides')
       .select('*')
       .order('date', { ascending: true })
       .order('created_at', { ascending: true })
+    
+    // Log the raw query result for debugging
+    console.log('[admin/rides API] Raw Supabase query result:', {
+      count: rides?.length || 0,
+      error: ridesError?.message,
+      rideIds: rides?.map((r: any) => r.id) || []
+    })
 
     if (ridesError) {
       console.error('Error fetching rides:', ridesError)
@@ -50,7 +59,14 @@ export async function GET(request: NextRequest) {
 
     console.log('[admin/rides API] Fetched rides from DB:', rides?.length || 0, 'rides')
     if (rides && rides.length > 0) {
-      console.log('[admin/rides API] Ride directions:', rides.map((r: any) => ({ id: r.id, direction: r.direction, date: r.date })))
+      console.log('[admin/rides API] All ride details:', rides.map((r: any) => ({ 
+        id: r.id, 
+        driver_id: r.driver_id,
+        driver_name: r.driver_name,
+        direction: r.direction, 
+        date: r.date,
+        created_at: r.created_at
+      })))
     }
 
     if (!rides || rides.length === 0) {
@@ -167,7 +183,16 @@ export async function GET(request: NextRequest) {
       createdAt: ride.created_at,
     }))
 
-    return NextResponse.json(ridesWithPassengers)
+    console.log('[admin/rides API] Returning', ridesWithPassengers.length, 'rides to client')
+    
+    // Add headers to prevent any caching
+    return NextResponse.json(ridesWithPassengers, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    })
   } catch (error) {
     console.error('Error in admin rides endpoint:', error)
     return NextResponse.json({ error: 'Failed to fetch admin rides' }, { status: 500 })
