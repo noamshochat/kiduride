@@ -98,13 +98,13 @@ export default function ParentPage() {
   const handleAssignChildren = async () => {
     if (!selectedRide || !user) return
 
-    // Filter out entries without child or name
+    // Filter out entries without a registered child
     const validEntries = childrenEntries.filter(entry => 
-      entry.child !== null || entry.name.trim() !== ''
+      entry.child !== null
     )
     
     if (validEntries.length === 0) {
-      alert('Please select or enter at least one child')
+      alert('Please select at least one registered child')
       return
     }
 
@@ -114,23 +114,17 @@ export default function ParentPage() {
       return
     }
 
-    // Check for duplicate children/names in the same ride
+    // Check for duplicate children in the same ride
     const existingNames = selectedRide.passengers.map(p => p.childName.toLowerCase())
     const existingChildIds = selectedRide.passengers
       .filter(p => p.childId)
       .map(p => p.childId!)
     
     const duplicateNames = validEntries
-      .map(e => {
-        if (e.child) {
-          return `${e.child.firstName}${e.child.lastName ? ' ' + e.child.lastName : ''}`.toLowerCase()
-        }
-        return e.name.trim().toLowerCase()
-      })
+      .map(e => `${e.child!.firstName}${e.child!.lastName ? ' ' + e.child!.lastName : ''}`.toLowerCase())
       .filter(name => name && existingNames.includes(name))
     
     const duplicateChildIds = validEntries
-      .filter(e => e.child?.id)
       .map(e => e.child!.id)
       .filter(id => existingChildIds.includes(id))
     
@@ -146,14 +140,12 @@ export default function ParentPage() {
     
     try {
       for (const entry of validEntries) {
-        // Use child from autocomplete if available, otherwise use name
-        const childName = entry.child
-          ? `${entry.child.firstName}${entry.child.lastName ? ' ' + entry.child.lastName : ''}`
-          : entry.name.trim()
+        // Use child from autocomplete (required)
+        const childName = `${entry.child!.firstName}${entry.child!.lastName ? ' ' + entry.child!.lastName : ''}`
         
         const passenger = {
           id: `p${Date.now()}-${Math.random()}`,
-          childId: entry.child?.id,
+          childId: entry.child!.id,
           childName: childName,
           parentId: user.id,
           parentName: user.name,
@@ -433,28 +425,18 @@ export default function ParentPage() {
                           <div className="flex-1 space-y-3">
                             <div>
                               <Label htmlFor={`child-${entry.id}`}>
-                                Child {index + 1} (Search or enter name)
+                                Child {index + 1}
                               </Label>
-                              <div className="space-y-2">
-                                <ChildAutocomplete
-                                  value={entry.child}
-                                  onChange={(child) => {
-                                    updateChildEntry(entry.id, { 
-                                      child,
-                                      name: child ? `${child.firstName}${child.lastName ? ' ' + child.lastName : ''}` : ''
-                                    })
-                                  }}
-                                  placeholder="Search for a registered child..."
-                                />
-                                {!entry.child && (
-                                  <Input
-                                    id={`name-${entry.id}`}
-                                    placeholder="Or enter child's name manually"
-                                    value={entry.name}
-                                    onChange={(e) => updateChildEntry(entry.id, { name: e.target.value })}
-                                  />
-                                )}
-                              </div>
+                              <ChildAutocomplete
+                                value={entry.child}
+                                onChange={(child) => {
+                                  updateChildEntry(entry.id, { 
+                                    child,
+                                    name: child ? `${child.firstName}${child.lastName ? ' ' + child.lastName : ''}` : ''
+                                  })
+                                }}
+                                placeholder="Search for a registered child..."
+                              />
                             </div>
 
                             <div className="flex items-center space-x-2">

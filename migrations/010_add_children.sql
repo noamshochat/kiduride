@@ -115,6 +115,19 @@ FROM users
 WHERE name = 'משה זגורסקי'
 ON CONFLICT (child_id, parent_id) DO NOTHING;
 
+-- אריאל ורשבסקי (has one parent: תמר ורשבסקי)
+INSERT INTO children (id, first_name, last_name) VALUES
+    ('child_ariel_varshevsky', 'אריאל', 'ורשבסקי')
+ON CONFLICT (id) DO NOTHING;
+
+-- אריאל ורשבסקי - תמר ורשבסקי
+-- Note: This will only insert if תמר ורשבסקי exists in users table
+INSERT INTO child_parents (child_id, parent_id)
+SELECT 'child_ariel_varshevsky', id
+FROM users
+WHERE name = 'תמר ורשבסקי'
+ON CONFLICT (child_id, parent_id) DO NOTHING;
+
 -- ============================================
 -- Verification Query (uncomment to run)
 -- ============================================
