@@ -264,19 +264,25 @@ export const supabaseDb = {
     }
   },
 
-  async deleteRide(rideId: string): Promise<boolean> {
-    // Passengers will be deleted automatically due to CASCADE DELETE
-    const { error } = await supabase
-      .from('rides')
-      .delete()
-      .eq('id', rideId)
+  async deleteRide(rideId: string, userId?: string, isAdmin?: boolean): Promise<boolean> {
+    try {
+      // Use API route for deletion to ensure proper authorization and bypass RLS when needed
+      const url = `/api/rides/${rideId}?userId=${encodeURIComponent(userId || '')}`
+      const response = await fetch(url, {
+        method: 'DELETE',
+      })
 
-    if (error) {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Error deleting ride:', errorData.error || response.statusText)
+        return false
+      }
+
+      return true
+    } catch (error) {
       console.error('Error deleting ride:', error)
       return false
     }
-
-    return true
   },
 
   // Passenger functions

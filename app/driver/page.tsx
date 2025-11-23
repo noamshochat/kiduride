@@ -189,22 +189,28 @@ export default function DriverPage() {
     }
   }
 
-  const handleDeleteRide = async (rideId: string) => {
-    if (confirm('Are you sure you want to delete this ride?')) {
+  const handleDeleteRide = async (rideId: string, rideDriverId?: string) => {
+    // Check if user owns the ride or is admin
+    if (!isAdmin && rideDriverId !== user?.id) {
+      alert('You can only delete your own rides.')
+      return
+    }
+
+    const confirmMessage = isAdmin 
+      ? 'Are you sure you want to delete this ride? (Admin: deleting any ride)'
+      : 'Are you sure you want to delete this ride?'
+    
+    if (confirm(confirmMessage)) {
       try {
-        const success = await supabaseDb.deleteRide(rideId)
+        const success = await supabaseDb.deleteRide(rideId, user?.id, isAdmin)
         if (success) {
           await loadRides()
         } else {
-          alert('Failed to delete ride. Please try again.')
+          alert('Failed to delete ride. Please check the console for details.')
         }
       } catch (error: any) {
-        if (error?.code === 'GOOGLE_SHEETS_NOT_CONFIGURED') {
-          alert('Google Sheets is not configured. Please set up GOOGLE_SERVICE_ACCOUNT_KEY or GOOGLE_SERVICE_ACCOUNT_PATH in your environment variables to delete rides.')
-        } else {
-          alert('Failed to delete ride. Please try again.')
-        }
-        console.error(error)
+        console.error('Error deleting ride:', error)
+        alert(`Failed to delete ride: ${error?.message || 'Unknown error'}`)
       }
     }
   }
@@ -418,14 +424,16 @@ export default function DriverPage() {
                           />
                         </>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteRide(ride.id)}
-                        className="text-destructive flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
-                      >
-                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
+                      {(isAdmin || ride.driverId === user.id) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteRide(ride.id, ride.driverId)}
+                          className="text-destructive flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
+                        >
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
