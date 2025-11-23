@@ -316,11 +316,11 @@ export const supabaseDb = {
         throw new Error('Child already assigned to this ride')
       }
     } else {
-      const existingName = ride.passengers.find(
+    const existingName = ride.passengers.find(
         (p) => p.childName.toLowerCase() === childName.toLowerCase()
-      )
-      if (existingName) {
-        throw new Error('Child already assigned to this ride')
+    )
+    if (existingName) {
+      throw new Error('Child already assigned to this ride')
       }
     }
 
@@ -418,7 +418,15 @@ export const supabaseDb = {
   async getAllRidesAdmin(userId: string): Promise<Ride[]> {
     try {
       // Call backend API - backend validates admin status before returning data
-      const response = await fetch(`/api/admin/rides?userId=${encodeURIComponent(userId)}`)
+      // Add cache-busting timestamp and no-cache headers to ensure fresh data
+      const timestamp = Date.now()
+      const response = await fetch(`/api/admin/rides?userId=${encodeURIComponent(userId)}&_t=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      })
 
       if (!response.ok) {
         if (response.status === 403) {
