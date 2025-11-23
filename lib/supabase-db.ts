@@ -421,7 +421,10 @@ export const supabaseDb = {
         throw new Error('Failed to fetch admin rides')
       }
 
-      return await response.json()
+      const rides = await response.json()
+      console.log('[getAllRidesAdmin] Received rides from API:', rides.length, 'rides')
+      console.log('[getAllRidesAdmin] Ride directions:', rides.map((r: Ride) => ({ id: r.id, direction: r.direction, date: r.date })))
+      return rides
     } catch (error) {
       console.error('Error fetching admin rides:', error)
       throw error
