@@ -38,17 +38,36 @@ export async function GET(request: NextRequest) {
     // This ensures reliable matching for Hebrew text regardless of database collation
     // Note: For Hebrew text, case doesn't exist, so direct string matching is fine
     const filteredData = (data || []).filter((child: any) => {
-      const firstName = (child.first_name || '').trim()
-      const lastName = (child.last_name || '').trim()
+      // Ensure we're working with strings and trim whitespace
+      const firstName = String(child.first_name || '').trim()
+      const lastName = String(child.last_name || '').trim()
       const fullName = `${firstName} ${lastName}`.trim()
+      const search = String(searchTerm).trim()
       
       // Direct string matching (Hebrew doesn't have case)
       // Check if search term appears in first name, last name, or full name
-      return (
-        firstName.includes(searchTerm) ||
-        lastName.includes(searchTerm) ||
-        fullName.includes(searchTerm)
+      // Use indexOf for more reliable matching than includes
+      const matches = (
+        firstName.indexOf(search) !== -1 ||
+        lastName.indexOf(search) !== -1 ||
+        fullName.indexOf(search) !== -1
       )
+      
+      // Debug logging for production troubleshooting (only for specific search)
+      if (search === 'אריאל' && firstName === 'אריאל') {
+        console.log('[Search Debug - אריאל]', {
+          searchTerm: search,
+          searchLength: search.length,
+          firstName: firstName,
+          firstNameLength: firstName.length,
+          charCodes: Array.from(search).map(c => c.charCodeAt(0)),
+          firstNameCharCodes: Array.from(firstName).map(c => c.charCodeAt(0)),
+          indexOfResult: firstName.indexOf(search),
+          matches
+        })
+      }
+      
+      return matches
     }).slice(0, 50) // Limit to 50 results after filtering
 
     // Transform to match our interface

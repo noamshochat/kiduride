@@ -448,7 +448,15 @@ export const supabaseDb = {
   // Children functions
   async searchChildren(query: string): Promise<Child[]> {
     try {
-      const response = await fetch(`/api/children/search?query=${encodeURIComponent(query)}`)
+      // Add cache-busting timestamp and no-cache headers to ensure fresh results
+      const timestamp = Date.now()
+      const response = await fetch(`/api/children/search?query=${encodeURIComponent(query)}&_t=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      })
       if (!response.ok) {
         throw new Error('Failed to search children')
       }
