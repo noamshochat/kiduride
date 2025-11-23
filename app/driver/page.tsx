@@ -32,7 +32,7 @@ export default function DriverPage() {
   const [usersMap, setUsersMap] = useState<Record<string, User>>({})
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
-    direction: 'to-school' as 'to-school' | 'from-school',
+    direction: 'to-school' as 'to-school' | 'from-school' | 'to-train-station',
     totalSeats: 0,
     pickupAddress: '',
     pickupTime: '',
@@ -128,6 +128,13 @@ export default function DriverPage() {
   useEffect(() => {
     // Always filter by selected date
     const dateFiltered = allRides.filter(ride => ride.date === selectedDate)
+    console.log('Driver mode - Filtering rides:', {
+      totalRides: allRides.length,
+      selectedDate,
+      filteredCount: dateFiltered.length,
+      rideDates: allRides.map(r => ({ id: r.id, date: r.date, direction: r.direction, driverId: r.driverId })),
+      filteredRides: dateFiltered.map(r => ({ id: r.id, date: r.date, direction: r.direction }))
+    })
     setRides(dateFiltered)
   }, [allRides, selectedDate])
 
@@ -291,7 +298,7 @@ export default function DriverPage() {
                   <Label htmlFor="direction">Direction</Label>
                   <Select
                     value={formData.direction}
-                    onValueChange={(value: 'to-school' | 'from-school') =>
+                    onValueChange={(value: 'to-school' | 'from-school' | 'to-train-station') =>
                       setFormData({ ...formData, direction: value })
                     }
                   >
