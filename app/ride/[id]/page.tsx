@@ -101,6 +101,11 @@ export default function RideDetailPage() {
                         <ArrowRight className="h-4 w-4" />
                         To university
                       </span>
+                    ) : ride.direction === 'to-train-station' ? (
+                      <span className="flex items-center gap-2">
+                        <ArrowRight className="h-4 w-4" />
+                        To train station
+                      </span>
                     ) : (
                       <span className="flex items-center gap-2">
                         <ArrowLeft className="h-4 w-4" />

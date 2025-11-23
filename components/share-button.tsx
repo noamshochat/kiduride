@@ -17,7 +17,7 @@ export function ShareButton({ ride, driverName, className }: ShareButtonProps) {
 
   const generateShareText = (): string => {
     const date = format(new Date(ride.date), 'MMM d, yyyy')
-    const direction = ride.direction === 'to-school' ? 'To university' : 'From university'
+    const direction = ride.direction === 'to-school'  ? 'To university': ride.direction === 'to-train-station'? 'To train station': 'From university'
     const shareUrl = typeof window !== 'undefined' 
       ? `${window.location.origin}/ride/${ride.id}`
       : ''

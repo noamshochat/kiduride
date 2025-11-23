@@ -301,6 +301,7 @@ export default function DriverPage() {
                     <SelectContent>
                       <SelectItem value="to-school">To university</SelectItem>
                       <SelectItem value="from-school">From university</SelectItem>
+                      <SelectItem value="to-train-station">To train station</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -383,7 +384,11 @@ export default function DriverPage() {
                         {format(new Date(ride.date), 'MMM d, yyyy')}
                       </CardTitle>
                       <CardDescription className="text-xs sm:text-sm break-words">
-                        {ride.direction === 'to-school' ? 'To university' : 'From university'}
+                        {ride.direction === 'to-school' 
+                          ? 'To university' 
+                          : ride.direction === 'to-train-station'
+                          ? 'To train station'
+                          : 'From university'}
                       </CardDescription>
                       {isAdmin && ride.driverId !== user.id && (
                         <CardDescription className="text-xs text-muted-foreground mt-1 break-words">

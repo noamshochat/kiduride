@@ -23,9 +23,11 @@ export function AddToCalendarButton({ ride, driverName, className }: AddToCalend
       const [hours, minutes] = ride.pickupTime.split(':').map(Number)
       startTime.setHours(hours, minutes || 0, 0, 0)
     } else {
-      // Default times: To school: 8:00 AM, From school: 3:00 PM
+      // Default times: To school: 8:00 AM, To train station: 7:00 AM, From school: 3:00 PM
       if (ride.direction === 'to-school') {
         startTime.setHours(8, 0, 0, 0)
+      } else if (ride.direction === 'to-train-station') {
+        startTime.setHours(7, 0, 0, 0)
       } else {
         startTime.setHours(15, 0, 0, 0)
       }
@@ -46,7 +48,11 @@ export function AddToCalendarButton({ ride, driverName, className }: AddToCalend
     // Format date for description
     const formattedDate = format(startTime, 'MMM d, yyyy')
     const formattedTime = format(startTime, 'h:mm a')
-    const direction = ride.direction === 'to-school' ? 'To university' : 'From university'
+    const direction = ride.direction === 'to-school'  
+    ? 'To university' 
+    : ride.direction === 'to-train-station'
+    ? 'To train station'
+    : 'From university'}
     
     // Generate ride URL
     const rideUrl = typeof window !== 'undefined' 

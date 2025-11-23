@@ -24,7 +24,7 @@ export interface ChildParent {
   createdAt: string;
 }
 
-export type RideDirection = 'to-school' | 'from-school';
+export type RideDirection = 'to-school' | 'from-school' | 'to-train-station';
 
 export interface Ride {
   id: string;

@@ -294,7 +294,11 @@ export default function ParentPage() {
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-lg">
-                          {ride.direction === 'to-school' ? 'To university' : 'From university'}
+                          {ride.direction === 'to-school'
+                          ? 'To university' 
+                          : ride.direction === 'to-train-station'
+                          ? 'To train station'
+                          : 'From university'}
                         </CardTitle>
                         <CardDescription>
                           {format(new Date(ride.date), 'MMM d, yyyy')} • {ride.driverName}
@@ -397,7 +401,12 @@ export default function ParentPage() {
                 <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
                   <p><strong>Ride Details:</strong></p>
                   <p>Date: {format(new Date(selectedRide.date), 'MMM d, yyyy')}</p>
-                  <p>Direction: {selectedRide.direction === 'to-school' ? 'To university' : 'From university'}</p>
+                  <p>Direction: {selectedRide.direction === 'to-school'  
+                          ? 'To university' 
+                          : selectedRide.direction === 'to-train-station'
+                          ? 'To train station'
+                          : 'From university'}
+                          </p>
                   <p>Pickup Location: {selectedRide.pickupAddress}</p>
                   <p>Available Seats: {selectedRide.availableSeats}</p>
                 </div>
