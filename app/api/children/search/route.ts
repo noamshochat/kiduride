@@ -37,6 +37,9 @@ export async function GET(request: NextRequest) {
     // Filter by first name, last name, and full name concatenation in JavaScript
     // This ensures reliable matching for Hebrew text regardless of database collation
     // Note: For Hebrew text, case doesn't exist, so direct string matching is fine
+    console.log('[Search API] Total children fetched:', (data || []).length)
+    console.log('[Search API] Search term:', searchTerm, 'Length:', searchTerm.length)
+    
     const filteredData = (data || []).filter((child: any) => {
       // Ensure we're working with strings and trim whitespace
       const firstName = String(child.first_name || '').trim()
@@ -47,28 +50,35 @@ export async function GET(request: NextRequest) {
       // Direct string matching (Hebrew doesn't have case)
       // Check if search term appears in first name, last name, or full name
       // Use indexOf for more reliable matching than includes
-      const matches = (
-        firstName.indexOf(search) !== -1 ||
-        lastName.indexOf(search) !== -1 ||
-        fullName.indexOf(search) !== -1
-      )
+      const firstNameMatch = firstName.indexOf(search) !== -1
+      const lastNameMatch = lastName.indexOf(search) !== -1
+      const fullNameMatch = fullName.indexOf(search) !== -1
+      const matches = firstNameMatch || lastNameMatch || fullNameMatch
       
-      // Debug logging for production troubleshooting (only for specific search)
-      if (search === 'אריאל' && firstName === 'אריאל') {
-        console.log('[Search Debug - אריאל]', {
+      // Debug logging for איתן search
+      if (search === 'איתן' || firstName === 'איתן') {
+        console.log('[Search Debug - איתן]', {
+          childId: child.id,
           searchTerm: search,
           searchLength: search.length,
           firstName: firstName,
           firstNameLength: firstName.length,
-          charCodes: Array.from(search).map(c => c.charCodeAt(0)),
-          firstNameCharCodes: Array.from(firstName).map(c => c.charCodeAt(0)),
-          indexOfResult: firstName.indexOf(search),
-          matches
+          lastName: lastName,
+          fullName: fullName,
+          firstNameMatch,
+          lastNameMatch,
+          fullNameMatch,
+          matches,
+          firstNameIndexOf: firstName.indexOf(search),
+          lastNameIndexOf: lastName.indexOf(search),
+          fullNameIndexOf: fullName.indexOf(search)
         })
       }
       
       return matches
     }).slice(0, 50) // Limit to 50 results after filtering
+    
+    console.log('[Search API] Filtered results:', filteredData.length)
 
     // Transform to match our interface
     const children = filteredData.map((child: any) => ({
