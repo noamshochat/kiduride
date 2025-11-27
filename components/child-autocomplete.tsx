@@ -62,14 +62,9 @@ export function ChildAutocomplete({
 
       setIsLoading(true)
       try {
-        console.log('[ChildAutocomplete] Searching for:', query)
         const children = await supabaseDb.searchChildren(query)
-        console.log('[ChildAutocomplete] Received children:', children.length, children)
         setResults(children)
         setIsOpen(children.length > 0)
-        if (query.includes('אית')) {
-          console.log('[ChildAutocomplete] Search for אית - results:', JSON.stringify(children, null, 2))
-        }
       } catch (error) {
         console.error('Error searching children:', error)
         setResults([])
