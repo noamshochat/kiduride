@@ -19,37 +19,11 @@ export async function GET(request: NextRequest) {
 
     const searchTerm = query.trim()
 
-    // First, try to directly query for איתן to verify it exists
-    const { data: eitanDirect, error: eitanError } = await supabase
-      .from('children')
-      .select('*')
-      .eq('id', 'child_eitan_nagar')
-    
-    console.log('[Search API] Direct query for child_eitan_nagar:', {
-      found: eitanDirect && eitanDirect.length > 0,
-      data: eitanDirect,
-      error: eitanError
-    })
-
-    // Try query without ORDER BY first to see if that's causing the issue
-    const { data: dataNoOrder, error: errorNoOrder } = await supabase
-      .from('children')
-      .select('*')
-      .limit(200)
-    
-    console.log('[Search API] Query WITHOUT ORDER BY returned:', (dataNoOrder || []).length, 'children')
-    console.log('[Search API] Query WITHOUT ORDER BY child IDs:', (dataNoOrder || []).map((c: any) => c.id))
-    const eitanInNoOrder = dataNoOrder?.find((c: any) => c.id === 'child_eitan_nagar')
-    console.log('[Search API] child_eitan_nagar in query WITHOUT ORDER BY:', !!eitanInNoOrder)
-
-    // Fetch all children and filter in JavaScript for reliable Hebrew text matching
-    // This approach is more reliable than relying on Supabase's ilike pattern matching
-    // which can have issues with Hebrew characters in production environments
+    // Fetch all children WITHOUT ORDER BY to avoid Hebrew text collation issues
+    // We'll sort in JavaScript instead, which handles Hebrew text more reliably
     const { data, error } = await supabase
       .from('children')
       .select('*')
-      .order('first_name', { ascending: true })
-      .order('last_name', { ascending: true })
       .limit(200) // Fetch more records to filter client-side
 
     if (error) {
@@ -57,23 +31,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to search children' }, { status: 500 })
     }
 
-    console.log('[Search API] General query WITH ORDER BY returned:', (data || []).length, 'children')
-    console.log('[Search API] General query WITH ORDER BY child IDs:', (data || []).map((c: any) => c.id))
-    const eitanInOrder = data?.find((c: any) => c.id === 'child_eitan_nagar')
-    console.log('[Search API] child_eitan_nagar in query WITH ORDER BY:', !!eitanInOrder)
-    
-    // Check if איתן exists in fetched data
-    let childrenData = data || []
-    const eitanChild = childrenData.find((c: any) => c.id === 'child_eitan_nagar')
-    
-    if (!eitanChild && eitanDirect && eitanDirect.length > 0) {
-      console.log('[Search API] WARNING: child_eitan_nagar found by direct query but NOT in general query!')
-      console.log('[Search API] This suggests an issue with ORDER BY or filtering in the general query')
-      console.log('[Search API] Adding child_eitan_nagar manually to results...')
-      childrenData.push(eitanDirect[0])
-    } else if (eitanChild) {
-      console.log('[Search API] child_eitan_nagar found in general query - no workaround needed')
-    }
+    // Sort in JavaScript to avoid database collation issues with Hebrew text
+    // Using localeCompare with Hebrew locale ensures proper sorting
+    const childrenData = (data || []).sort((a: any, b: any) => {
+      const aFirstName = (a.first_name || '').trim()
+      const bFirstName = (b.first_name || '').trim()
+      const aLastName = (a.last_name || '').trim()
+      const bLastName = (b.last_name || '').trim()
+      
+      // Compare first names
+      if (aFirstName !== bFirstName) {
+        return aFirstName.localeCompare(bFirstName, 'he')
+      }
+      // If first names are equal, compare last names
+      return aLastName.localeCompare(bLastName, 'he')
+    })
 
     // Filter by first name, last name, and full name concatenation in JavaScript
     // This ensures reliable matching for Hebrew text regardless of database collation
