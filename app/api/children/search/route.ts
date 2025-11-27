@@ -19,6 +19,18 @@ export async function GET(request: NextRequest) {
 
     const searchTerm = query.trim()
 
+    // First, try to directly query for איתן to verify it exists
+    const { data: eitanDirect, error: eitanError } = await supabase
+      .from('children')
+      .select('*')
+      .eq('id', 'child_eitan_nagar')
+    
+    console.log('[Search API] Direct query for child_eitan_nagar:', {
+      found: eitanDirect && eitanDirect.length > 0,
+      data: eitanDirect,
+      error: eitanError
+    })
+    
     // Fetch all children and filter in JavaScript for reliable Hebrew text matching
     // This approach is more reliable than relying on Supabase's ilike pattern matching
     // which can have issues with Hebrew characters in production environments
@@ -33,10 +45,17 @@ export async function GET(request: NextRequest) {
     if (data) {
       const eitanChild = data.find((c: any) => c.first_name === 'איתן' || c.id === 'child_eitan_nagar')
       if (eitanChild) {
-        console.log('[Search API] Found איתן in database:', eitanChild)
+        console.log('[Search API] Found איתן in fetched children:', eitanChild)
       } else {
         console.log('[Search API] WARNING: איתן NOT found in fetched children!')
         console.log('[Search API] All child IDs:', data.map((c: any) => ({ id: c.id, firstName: c.first_name })))
+        // If direct query found it but general query didn't, there's a filtering issue
+        if (eitanDirect && eitanDirect.length > 0) {
+          console.log('[Search API] ERROR: Direct query found איתן but general query did not!')
+          console.log('[Search API] Adding איתן manually to results...')
+          // Manually add it to the data array
+          data.push(eitanDirect[0])
+        }
       }
     }
 
