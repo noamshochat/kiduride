@@ -28,6 +28,17 @@ export async function GET(request: NextRequest) {
       .order('first_name', { ascending: true })
       .order('last_name', { ascending: true })
       .limit(200) // Fetch more records to filter client-side
+    
+    // Debug: Check if איתן exists in fetched data
+    if (data) {
+      const eitanChild = data.find((c: any) => c.first_name === 'איתן' || c.id === 'child_eitan_nagar')
+      if (eitanChild) {
+        console.log('[Search API] Found איתן in database:', eitanChild)
+      } else {
+        console.log('[Search API] WARNING: איתן NOT found in fetched children!')
+        console.log('[Search API] All child IDs:', data.map((c: any) => ({ id: c.id, firstName: c.first_name })))
+      }
+    }
 
     if (error) {
       console.error('Error searching children:', error)
