@@ -55,8 +55,8 @@ export async function GET(request: NextRequest) {
       const fullNameMatch = fullName.indexOf(search) !== -1
       const matches = firstNameMatch || lastNameMatch || fullNameMatch
       
-      // Debug logging for איתן search
-      if (search === 'איתן' || firstName === 'איתן') {
+      // Debug logging for איתן search (including partial matches like "אית")
+      if (firstName === 'איתן' || search.includes('אית') || firstName.includes('אית')) {
         console.log('[Search Debug - איתן]', {
           childId: child.id,
           searchTerm: search,
@@ -71,7 +71,9 @@ export async function GET(request: NextRequest) {
           matches,
           firstNameIndexOf: firstName.indexOf(search),
           lastNameIndexOf: lastName.indexOf(search),
-          fullNameIndexOf: fullName.indexOf(search)
+          fullNameIndexOf: fullName.indexOf(search),
+          searchCharCodes: Array.from(search).map(c => c.charCodeAt(0)),
+          firstNameCharCodes: Array.from(firstName).map(c => c.charCodeAt(0))
         })
       }
       
@@ -79,6 +81,7 @@ export async function GET(request: NextRequest) {
     }).slice(0, 50) // Limit to 50 results after filtering
     
     console.log('[Search API] Filtered results:', filteredData.length)
+    console.log('[Search API] Filtered child IDs:', filteredData.map((c: any) => c.id))
 
     // Transform to match our interface
     const children = filteredData.map((child: any) => ({
@@ -86,6 +89,11 @@ export async function GET(request: NextRequest) {
       firstName: child.first_name,
       lastName: child.last_name || undefined,
     }))
+    
+    console.log('[Search API] Returning children:', children.length, 'items')
+    if (searchTerm.includes('אית')) {
+      console.log('[Search API] Children returned for אית search:', JSON.stringify(children, null, 2))
+    }
 
     // Prevent caching to ensure fresh results
     return NextResponse.json(children, {
