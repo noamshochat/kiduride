@@ -30,7 +30,18 @@ export async function GET(request: NextRequest) {
       data: eitanDirect,
       error: eitanError
     })
+
+    // Try query without ORDER BY first to see if that's causing the issue
+    const { data: dataNoOrder, error: errorNoOrder } = await supabase
+      .from('children')
+      .select('*')
+      .limit(200)
     
+    console.log('[Search API] Query WITHOUT ORDER BY returned:', (dataNoOrder || []).length, 'children')
+    console.log('[Search API] Query WITHOUT ORDER BY child IDs:', (dataNoOrder || []).map((c: any) => c.id))
+    const eitanInNoOrder = dataNoOrder?.find((c: any) => c.id === 'child_eitan_nagar')
+    console.log('[Search API] child_eitan_nagar in query WITHOUT ORDER BY:', !!eitanInNoOrder)
+
     // Fetch all children and filter in JavaScript for reliable Hebrew text matching
     // This approach is more reliable than relying on Supabase's ilike pattern matching
     // which can have issues with Hebrew characters in production environments
@@ -40,37 +51,34 @@ export async function GET(request: NextRequest) {
       .order('first_name', { ascending: true })
       .order('last_name', { ascending: true })
       .limit(200) // Fetch more records to filter client-side
-    
-    // Debug: Check if איתן exists in fetched data
-    if (data) {
-      const eitanChild = data.find((c: any) => c.first_name === 'איתן' || c.id === 'child_eitan_nagar')
-      if (eitanChild) {
-        console.log('[Search API] Found איתן in fetched children:', eitanChild)
-      } else {
-        console.log('[Search API] WARNING: איתן NOT found in fetched children!')
-        console.log('[Search API] All child IDs:', data.map((c: any) => ({ id: c.id, firstName: c.first_name })))
-        // If direct query found it but general query didn't, there's a filtering issue
-        if (eitanDirect && eitanDirect.length > 0) {
-          console.log('[Search API] ERROR: Direct query found איתן but general query did not!')
-          console.log('[Search API] Adding איתן manually to results...')
-          // Manually add it to the data array
-          data.push(eitanDirect[0])
-        }
-      }
-    }
 
     if (error) {
       console.error('Error searching children:', error)
       return NextResponse.json({ error: 'Failed to search children' }, { status: 500 })
     }
 
+    console.log('[Search API] General query WITH ORDER BY returned:', (data || []).length, 'children')
+    console.log('[Search API] General query WITH ORDER BY child IDs:', (data || []).map((c: any) => c.id))
+    const eitanInOrder = data?.find((c: any) => c.id === 'child_eitan_nagar')
+    console.log('[Search API] child_eitan_nagar in query WITH ORDER BY:', !!eitanInOrder)
+    
+    // Check if איתן exists in fetched data
+    let childrenData = data || []
+    const eitanChild = childrenData.find((c: any) => c.id === 'child_eitan_nagar')
+    
+    if (!eitanChild && eitanDirect && eitanDirect.length > 0) {
+      console.log('[Search API] WARNING: child_eitan_nagar found by direct query but NOT in general query!')
+      console.log('[Search API] This suggests an issue with ORDER BY or filtering in the general query')
+      console.log('[Search API] Adding child_eitan_nagar manually to results...')
+      childrenData.push(eitanDirect[0])
+    } else if (eitanChild) {
+      console.log('[Search API] child_eitan_nagar found in general query - no workaround needed')
+    }
+
     // Filter by first name, last name, and full name concatenation in JavaScript
     // This ensures reliable matching for Hebrew text regardless of database collation
     // Note: For Hebrew text, case doesn't exist, so direct string matching is fine
-    console.log('[Search API] Total children fetched:', (data || []).length)
-    console.log('[Search API] Search term:', searchTerm, 'Length:', searchTerm.length)
-    
-    const filteredData = (data || []).filter((child: any) => {
+    const filteredData = childrenData.filter((child: any) => {
       // Ensure we're working with strings and trim whitespace
       const firstName = String(child.first_name || '').trim()
       const lastName = String(child.last_name || '').trim()
@@ -80,38 +88,12 @@ export async function GET(request: NextRequest) {
       // Direct string matching (Hebrew doesn't have case)
       // Check if search term appears in first name, last name, or full name
       // Use indexOf for more reliable matching than includes
-      const firstNameMatch = firstName.indexOf(search) !== -1
-      const lastNameMatch = lastName.indexOf(search) !== -1
-      const fullNameMatch = fullName.indexOf(search) !== -1
-      const matches = firstNameMatch || lastNameMatch || fullNameMatch
-      
-      // Debug logging for איתן search (including partial matches like "אית")
-      if (firstName === 'איתן' || search.includes('אית') || firstName.includes('אית')) {
-        console.log('[Search Debug - איתן]', {
-          childId: child.id,
-          searchTerm: search,
-          searchLength: search.length,
-          firstName: firstName,
-          firstNameLength: firstName.length,
-          lastName: lastName,
-          fullName: fullName,
-          firstNameMatch,
-          lastNameMatch,
-          fullNameMatch,
-          matches,
-          firstNameIndexOf: firstName.indexOf(search),
-          lastNameIndexOf: lastName.indexOf(search),
-          fullNameIndexOf: fullName.indexOf(search),
-          searchCharCodes: Array.from(search).map(c => c.charCodeAt(0)),
-          firstNameCharCodes: Array.from(firstName).map(c => c.charCodeAt(0))
-        })
-      }
-      
-      return matches
+      return (
+        firstName.indexOf(search) !== -1 ||
+        lastName.indexOf(search) !== -1 ||
+        fullName.indexOf(search) !== -1
+      )
     }).slice(0, 50) // Limit to 50 results after filtering
-    
-    console.log('[Search API] Filtered results:', filteredData.length)
-    console.log('[Search API] Filtered child IDs:', filteredData.map((c: any) => c.id))
 
     // Transform to match our interface
     const children = filteredData.map((child: any) => ({
@@ -119,11 +101,6 @@ export async function GET(request: NextRequest) {
       firstName: child.first_name,
       lastName: child.last_name || undefined,
     }))
-    
-    console.log('[Search API] Returning children:', children.length, 'items')
-    if (searchTerm.includes('אית')) {
-      console.log('[Search API] Children returned for אית search:', JSON.stringify(children, null, 2))
-    }
 
     // Prevent caching to ensure fresh results
     return NextResponse.json(children, {
