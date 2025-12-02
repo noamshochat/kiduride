@@ -34,24 +34,93 @@ export function ShareButton({ ride, driverName, className }: ShareButtonProps) {
   }
 
   const captureScreenshot = async (): Promise<File | null> => {
-    if (!screenshotRef.current) return null
+    if (!screenshotRef.current) {
+      console.error('Screenshot ref is null')
+      return null
+    }
 
     try {
-      const canvas = await html2canvas(screenshotRef.current, {
+      const element = screenshotRef.current
+      
+      // Store original styles
+      const originalStyles = {
+        position: element.style.position || '',
+        left: element.style.left || '',
+        top: element.style.top || '',
+        opacity: element.style.opacity || '',
+        pointerEvents: element.style.pointerEvents || '',
+        zIndex: element.style.zIndex || '',
+        transform: element.style.transform || '',
+      }
+      
+      // Make element visible but positioned off-screen for html2canvas
+      // html2canvas needs the element to be in the DOM and visible
+      element.style.position = 'fixed'
+      element.style.left = '0'
+      element.style.top = '0'
+      element.style.opacity = '1'
+      element.style.pointerEvents = 'none'
+      element.style.zIndex = '999999'
+      element.style.transform = 'translateX(-10000px)'
+      
+      // Force a reflow to ensure styles are applied
+      void element.offsetHeight
+      
+      // Wait for rendering
+      await new Promise(resolve => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setTimeout(resolve, 300)
+          })
+        })
+      })
+      
+      // Check if element has content
+      if (element.offsetWidth === 0 || element.offsetHeight === 0) {
+        console.error('Element has no dimensions', {
+          width: element.offsetWidth,
+          height: element.offsetHeight,
+          scrollWidth: element.scrollWidth,
+          scrollHeight: element.scrollHeight
+        })
+      }
+      
+      const canvas = await html2canvas(element, {
         backgroundColor: '#f8fafc',
         scale: 2,
-        logging: false,
+        logging: true, // Enable logging to debug
+        useCORS: true,
+        allowTaint: false,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
       })
+      
+      // Restore original styles immediately
+      element.style.position = originalStyles.position
+      element.style.left = originalStyles.left
+      element.style.top = originalStyles.top
+      element.style.opacity = originalStyles.opacity
+      element.style.pointerEvents = originalStyles.pointerEvents
+      element.style.zIndex = originalStyles.zIndex
+      element.style.transform = originalStyles.transform
+      
+      // Check if canvas is empty
+      if (canvas.width === 0 || canvas.height === 0) {
+        console.error('Canvas is empty', { width: canvas.width, height: canvas.height })
+        return null
+      }
       
       return new Promise((resolve) => {
         canvas.toBlob((blob) => {
-          if (blob) {
+          if (blob && blob.size > 0) {
             const file = new File([blob], `ride-${ride.id}-${ride.date}.png`, { type: 'image/png' })
+            console.log('Screenshot captured successfully', { size: blob.size, file })
             resolve(file)
           } else {
+            console.error('Failed to create blob from canvas', { blob })
             resolve(null)
           }
-        }, 'image/png')
+        }, 'image/png', 0.95)
       })
     } catch (error) {
       console.error('Error capturing screenshot:', error)
@@ -117,8 +186,8 @@ export function ShareButton({ ride, driverName, className }: ShareButtonProps) {
       {/* Hidden div for screenshot capture */}
       <div
         ref={screenshotRef}
-        className="fixed -left-[9999px] top-0 w-[400px] bg-gradient-to-br from-blue-50 to-indigo-100 p-6"
-        style={{ visibility: 'hidden' }}
+        className="absolute -left-[9999px] top-0 w-[400px] bg-gradient-to-br from-blue-50 to-indigo-100 p-6"
+        style={{ opacity: 0, pointerEvents: 'none' }}
       >
         <div className="bg-white rounded-lg shadow-lg p-6 space-y-4">
           <div className="border-b pb-4">
