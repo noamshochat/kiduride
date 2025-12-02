@@ -65,7 +65,7 @@ The app comes with pre-configured demo users for testing:
 2. Click "Create New Ride" to add a new ride
 3. Fill in the ride details:
    - Date
-   - Direction (To university / From university)
+   - Direction (To university / From university / To train station)
    - Total seats available
    - Pickup address
    - Optional notes

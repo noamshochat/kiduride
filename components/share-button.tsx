@@ -73,7 +73,7 @@ export function ShareButton({ ride, driverName, className }: ShareButtonProps) {
         className={className}
         title="Share ride"
       >
-        <Share2 className="h-4 w-4 sm:mr-2" />
+        <Share2 className="h-4 w-4 sm:mr-3" />
         <span className="hidden sm:inline">Share</span>
       </Button>
       {ToastComponent}

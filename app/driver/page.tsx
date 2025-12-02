@@ -202,15 +202,23 @@ export default function DriverPage() {
     
     if (confirm(confirmMessage)) {
       try {
+        // Optimistically remove the ride from state immediately
+        setAllRides(prevRides => prevRides.filter(ride => ride.id !== rideId))
+        
         const success = await supabaseDb.deleteRide(rideId, user?.id, isAdmin)
         if (success) {
+          // Reload rides to ensure we have the latest data from the server
           await loadRides()
         } else {
+          // If deletion failed, reload to restore the ride
           alert('Failed to delete ride. Please check the console for details.')
+          await loadRides()
         }
       } catch (error: any) {
         console.error('Error deleting ride:', error)
         alert(`Failed to delete ride: ${error?.message || 'Unknown error'}`)
+        // Reload on error to ensure state is correct
+        await loadRides()
       }
     }
   }

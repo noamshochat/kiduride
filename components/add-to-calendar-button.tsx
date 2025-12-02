@@ -126,7 +126,7 @@ export function AddToCalendarButton({ ride, driverName, className }: AddToCalend
       className={className}
       title="Add to calendar"
     >
-      <Calendar className="h-4 w-4 sm:mr-2" />
+      <Calendar className="h-4 w-4 sm:mr-3" />
       <span className="hidden sm:inline">Add to Calendar</span>
     </Button>
   )
