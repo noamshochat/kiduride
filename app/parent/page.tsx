@@ -35,6 +35,12 @@ export default function ParentPage() {
     { id: '1', child: null, name: '', pickupFromHome: false, pickupAddress: '' }
   ])
   const [usersMap, setUsersMap] = useState<Record<string, User>>({})
+  const [isUpdateOpen, setIsUpdateOpen] = useState(false)
+  const [selectedPassenger, setSelectedPassenger] = useState<{ rideId: string; passenger: Passenger } | null>(null)
+  const [updateEntry, setUpdateEntry] = useState<{ pickupFromHome: boolean; pickupAddress: string }>({
+    pickupFromHome: false,
+    pickupAddress: ''
+  })
 
   // Load users map on mount
   useEffect(() => {
@@ -228,6 +234,51 @@ export default function ParentPage() {
     setIsAssignOpen(true)
   }
 
+  const openUpdateDialog = (rideId: string, passenger: Passenger) => {
+    setSelectedPassenger({ rideId, passenger })
+    setUpdateEntry({
+      pickupFromHome: passenger.pickupFromHome || false,
+      pickupAddress: passenger.pickupAddress || ''
+    })
+    setIsUpdateOpen(true)
+  }
+
+  const handleUpdatePassenger = async () => {
+    if (!selectedPassenger || !user) return
+
+    // Check if this passenger belongs to the current user
+    if (selectedPassenger.passenger.parentId !== user.id) {
+      alert('You can only update your own children\'s assignments')
+      return
+    }
+
+    try {
+      const success = await supabaseDb.updatePassenger(
+        selectedPassenger.rideId,
+        selectedPassenger.passenger.id,
+        {
+          pickupFromHome: updateEntry.pickupFromHome,
+          pickupAddress: updateEntry.pickupFromHome ? updateEntry.pickupAddress : ''
+        }
+      )
+
+      if (success) {
+        setIsUpdateOpen(false)
+        setSelectedPassenger(null)
+        await loadRides()
+      } else {
+        alert('Failed to update assignment. Please try again.')
+      }
+    } catch (error: any) {
+      if (error?.code === 'GOOGLE_SHEETS_NOT_CONFIGURED') {
+        alert('Google Sheets is not configured. Please set up GOOGLE_SERVICE_ACCOUNT_KEY or GOOGLE_SERVICE_ACCOUNT_PATH in your environment variables to update assignments.')
+      } else {
+        alert('Failed to update assignment. Please try again.')
+      }
+      console.error(error)
+    }
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -344,14 +395,24 @@ export default function ParentPage() {
                                   </div>
                                 )}
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveChild(ride.id, passenger.id)}
-                                className="text-destructive h-6 px-2"
-                              >
-                                Remove
-                              </Button>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openUpdateDialog(ride.id, passenger)}
+                                  className="h-6 px-2"
+                                >
+                                  Update
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRemoveChild(ride.id, passenger.id)}
+                                  className="text-destructive h-6 px-2"
+                                >
+                                  Remove
+                                </Button>
+                              </div>
                             </li>
                           ))}
                         </ul>
@@ -505,6 +566,77 @@ export default function ParentPage() {
                 }
               >
                 Assign Children
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isUpdateOpen} onOpenChange={setIsUpdateOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Update Child Assignment</DialogTitle>
+              <DialogDescription>
+                Update pickup details for {selectedPassenger?.passenger.childName}
+              </DialogDescription>
+            </DialogHeader>
+            {selectedPassenger && (
+              <div className="grid gap-4 py-4">
+                <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                  <p><strong>Child:</strong> {selectedPassenger.passenger.childName}</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="update-pickup"
+                      checked={updateEntry.pickupFromHome}
+                      onCheckedChange={(checked) => {
+                        setUpdateEntry({
+                          pickupFromHome: checked === true,
+                          pickupAddress: checked === true ? updateEntry.pickupAddress : ''
+                        })
+                      }}
+                    />
+                    <Label
+                      htmlFor="update-pickup"
+                      className="text-sm font-normal cursor-pointer flex items-center gap-2"
+                    >
+                      <Home className="h-4 w-4" />
+                      Pickup from home (different address)
+                    </Label>
+                  </div>
+
+                  {updateEntry.pickupFromHome && (
+                    <div className="space-y-2">
+                      <Label htmlFor="update-pickup-address">Pickup Address</Label>
+                      <Input
+                        id="update-pickup-address"
+                        placeholder="Enter pickup address"
+                        value={updateEntry.pickupAddress}
+                        onChange={(e) => {
+                          setUpdateEntry({
+                            ...updateEntry,
+                            pickupAddress: e.target.value
+                          })
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsUpdateOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdatePassenger}
+                disabled={updateEntry.pickupFromHome && !updateEntry.pickupAddress.trim()}
+              >
+                Update
               </Button>
             </DialogFooter>
           </DialogContent>

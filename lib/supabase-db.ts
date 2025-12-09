@@ -393,6 +393,41 @@ export const supabaseDb = {
     return true
   },
 
+  async updatePassenger(rideId: string, passengerId: string, updates: { pickupFromHome?: boolean; pickupAddress?: string }): Promise<boolean> {
+    // Verify the passenger exists and belongs to the ride
+    const ride = await this.getRideById(rideId)
+    if (!ride) {
+      return false
+    }
+
+    const passenger = ride.passengers.find(p => p.id === passengerId)
+    if (!passenger) {
+      return false
+    }
+
+    // Update passenger
+    const updateData: any = {}
+    if (updates.pickupFromHome !== undefined) {
+      updateData.pickup_from_home = updates.pickupFromHome
+    }
+    if (updates.pickupAddress !== undefined) {
+      updateData.pickup_address = updates.pickupAddress || null
+    }
+
+    const { error } = await supabase
+      .from('passengers')
+      .update(updateData)
+      .eq('id', passengerId)
+      .eq('ride_id', rideId)
+
+    if (error) {
+      console.error('Error updating passenger:', error)
+      return false
+    }
+
+    return true
+  },
+
   // Admin functions - these check admin status via API (backend validation)
   async checkIsAdmin(userId: string): Promise<boolean> {
     try {
