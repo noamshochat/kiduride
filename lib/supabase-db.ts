@@ -264,6 +264,55 @@ export const supabaseDb = {
     }
   },
 
+  async updateRide(rideId: string, updates: { 
+    totalSeats?: number
+    pickupAddress?: string
+    pickupTime?: string
+    notes?: string
+  }): Promise<boolean> {
+    // Get the current ride to validate and calculate new available seats
+    const currentRide = await this.getRideById(rideId)
+    if (!currentRide) {
+      return false
+    }
+
+    const updateData: any = {}
+    
+    // Update total seats and recalculate available seats
+    if (updates.totalSeats !== undefined) {
+      if (updates.totalSeats < currentRide.passengers.length) {
+        throw new Error(`Cannot reduce total seats below ${currentRide.passengers.length} (number of assigned passengers)`)
+      }
+      updateData.total_seats = updates.totalSeats
+      // Recalculate available seats: new total - current passengers
+      updateData.available_seats = updates.totalSeats - currentRide.passengers.length
+    }
+    
+    if (updates.pickupAddress !== undefined) {
+      updateData.pickup_address = updates.pickupAddress
+    }
+    
+    if (updates.pickupTime !== undefined) {
+      updateData.pickup_time = updates.pickupTime || null
+    }
+    
+    if (updates.notes !== undefined) {
+      updateData.notes = updates.notes || null
+    }
+
+    const { error } = await supabase
+      .from('rides')
+      .update(updateData)
+      .eq('id', rideId)
+
+    if (error) {
+      console.error('Error updating ride:', error)
+      return false
+    }
+
+    return true
+  },
+
   async deleteRide(rideId: string, userId?: string, isAdmin?: boolean): Promise<boolean> {
     try {
       // Use API route for deletion to ensure proper authorization and bypass RLS when needed

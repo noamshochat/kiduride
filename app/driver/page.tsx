@@ -13,7 +13,7 @@ import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
-import { Plus, Trash2, Users, MapPin, Calendar } from 'lucide-react'
+import { Plus, Trash2, Users, MapPin, Calendar, Pencil } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { ShareButton } from '@/components/share-button'
 import { AddToCalendarButton } from '@/components/add-to-calendar-button'
@@ -29,10 +29,18 @@ export default function DriverPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(true)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isUpdateOpen, setIsUpdateOpen] = useState(false)
+  const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
   const [usersMap, setUsersMap] = useState<Record<string, User>>({})
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     direction: 'to-school' as 'to-school' | 'from-school' | 'to-train-station',
+    totalSeats: 0,
+    pickupAddress: '',
+    pickupTime: '',
+    notes: '',
+  })
+  const [updateData, setUpdateData] = useState({
     totalSeats: 0,
     pickupAddress: '',
     pickupTime: '',
@@ -186,6 +194,47 @@ export default function DriverPage() {
         alert('Failed to create ride. Please try again.')
       }
       console.error(error)
+    }
+  }
+
+  const openUpdateDialog = (ride: Ride) => {
+    setSelectedRide(ride)
+    setUpdateData({
+      totalSeats: ride.totalSeats,
+      pickupAddress: ride.pickupAddress,
+      pickupTime: ride.pickupTime || '',
+      notes: ride.notes || '',
+    })
+    setIsUpdateOpen(true)
+  }
+
+  const handleUpdateRide = async () => {
+    if (!selectedRide || !user) return
+
+    // Check if user owns the ride
+    if (selectedRide.driverId !== user.id) {
+      alert('You can only update your own rides.')
+      return
+    }
+
+    try {
+      const success = await supabaseDb.updateRide(selectedRide.id, {
+        totalSeats: updateData.totalSeats,
+        pickupAddress: updateData.pickupAddress,
+        pickupTime: updateData.pickupTime || undefined,
+        notes: updateData.notes || undefined,
+      })
+
+      if (success) {
+        setIsUpdateOpen(false)
+        setSelectedRide(null)
+        await loadRides()
+      } else {
+        alert('Failed to update ride. Please try again.')
+      }
+    } catch (error: any) {
+      alert(`Failed to update ride: ${error?.message || 'Unknown error'}`)
+      console.error('Error updating ride:', error)
     }
   }
 
@@ -381,6 +430,89 @@ export default function DriverPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          <Dialog open={isUpdateOpen} onOpenChange={setIsUpdateOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Update Ride</DialogTitle>
+                <DialogDescription>
+                  Update ride details. Note: You cannot reduce total seats below the number of assigned passengers ({selectedRide?.passengers.length || 0}).
+                </DialogDescription>
+              </DialogHeader>
+              {selectedRide && (
+                <div className="grid gap-3 sm:gap-4 py-2 sm:py-4 px-1 sm:px-0">
+                  <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                    <p><strong>Ride Details:</strong></p>
+                    <p>Date: {format(new Date(selectedRide.date), 'MMM d, yyyy')}</p>
+                    <p>Direction: {selectedRide.direction === 'to-school'  
+                            ? 'To university' 
+                            : selectedRide.direction === 'to-train-station'
+                            ? 'To train station'
+                            : 'From university'}
+                    </p>
+                    <p>Assigned Passengers: {selectedRide.passengers.length}</p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="update-seats">Total Seats</Label>
+                    <NumberInput
+                      id="update-seats"
+                      min={selectedRide.passengers.length}
+                      max={10}
+                      value={updateData.totalSeats}
+                      onChange={(value) => setUpdateData({ ...updateData, totalSeats: value })}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Minimum: {selectedRide.passengers.length} (number of assigned passengers)
+                    </p>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="update-address">Pickup Address</Label>
+                    <Input
+                      id="update-address"
+                      value={updateData.pickupAddress}
+                      onChange={(e) => setUpdateData({ ...updateData, pickupAddress: e.target.value })}
+                      placeholder="123 Main St, City"
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="update-pickupTime">Pickup Time (Optional)</Label>
+                    <Input
+                      id="update-pickupTime"
+                      type="time"
+                      value={updateData.pickupTime}
+                      onChange={(e) => setUpdateData({ ...updateData, pickupTime: e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="update-notes">Notes (Optional)</Label>
+                    <Input
+                      id="update-notes"
+                      value={updateData.notes}
+                      onChange={(e) => setUpdateData({ ...updateData, notes: e.target.value })}
+                      placeholder="Additional notes..."
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              )}
+              <DialogFooter className="px-1 sm:px-0 gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => setIsUpdateOpen(false)} className="w-full sm:w-auto">
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleUpdateRide} 
+                  disabled={!updateData.pickupAddress || !updateData.totalSeats || updateData.totalSeats < (selectedRide?.passengers.length || 0)} 
+                  className="w-full sm:w-auto"
+                >
+                  Update Ride
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 w-full max-w-full">
@@ -432,12 +564,24 @@ export default function DriverPage() {
                           />
                         </>
                       )}
+                      {ride.driverId === user.id && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openUpdateDialog(ride)}
+                          className="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
+                          title="Update ride"
+                        >
+                          <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                      )}
                       {(isAdmin || ride.driverId === user.id) && (
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDeleteRide(ride.id, ride.driverId)}
                           className="text-destructive flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
+                          title="Delete ride"
                         >
                           <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
