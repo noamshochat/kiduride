@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from '@/components/auth-provider'
+import { useActivity } from '@/components/activity-provider'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +11,7 @@ import { Navigation } from '@/components/navigation'
 
 export default function SelectModePage() {
   const { user, isLoading } = useAuth()
+  const { activity } = useActivity()
   const router = useRouter()
 
   useEffect(() => {
@@ -32,9 +34,9 @@ export default function SelectModePage() {
       <div className="flex items-center justify-center p-4 min-h-[calc(100vh-64px)]">
         <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-primary">Welcome, {user.name}!</CardTitle>
+          <CardTitle className={`text-3xl font-bold ${activity === 'tennis' ? 'text-green-600' : 'text-primary'}`}>Welcome, {user.name}!</CardTitle>
           <CardDescription>
-            Choose how you'd like to use KiduRide
+            Choose how you'd like to use {activity === 'tennis' ? 'TennisRide' : 'KiduRide'}
           </CardDescription>
         </CardHeader>
         <CardContent>

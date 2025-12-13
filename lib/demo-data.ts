@@ -8,6 +8,8 @@ export interface User {
   phone?: string;
   child_name?: string; // Added for Supabase compatibility
   is_admin?: boolean; // Admin privileges - checked on backend only
+  is_registered_kidu?: boolean; // Whether user is registered for Kidumathematics
+  is_registered_tennis?: boolean; // Whether user is registered for Tennis Hanuka Camp
 }
 
 export interface Child {
@@ -24,7 +26,7 @@ export interface ChildParent {
   createdAt: string;
 }
 
-export type RideDirection = 'to-school' | 'from-school' | 'to-train-station';
+export type RideDirection = 'to-school' | 'from-school' | 'to-train-station' | 'to-tennis-center' | 'back-home';
 
 export interface Ride {
   id: string;

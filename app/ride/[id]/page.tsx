@@ -10,6 +10,7 @@ import { format } from 'date-fns'
 import { Users, MapPin, Calendar, ArrowRight, ArrowLeft, Phone } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { useAuth } from '@/components/auth-provider'
+import { getDirectionLabel } from '@/lib/utils'
 
 export default function RideDetailPage() {
   const params = useParams()
@@ -96,22 +97,14 @@ export default function RideDetailPage() {
                     {format(new Date(ride.date), 'EEEE, MMMM d, yyyy')}
                   </CardTitle>
                   <CardDescription className="text-base mt-2">
-                    {ride.direction === 'to-school' ? (
-                      <span className="flex items-center gap-2">
-                        <ArrowRight className="h-4 w-4" />
-                        To university
-                      </span>
-                    ) : ride.direction === 'to-train-station' ? (
-                      <span className="flex items-center gap-2">
-                        <ArrowRight className="h-4 w-4" />
-                        To train station
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-2">
+                      {(ride.direction === 'from-school' || ride.direction === 'back-home') ? (
                         <ArrowLeft className="h-4 w-4" />
-                        From university
-                      </span>
-                    )}
+                      ) : (
+                        <ArrowRight className="h-4 w-4" />
+                      )}
+                      {getDirectionLabel(ride.direction)}
+                    </span>
                   </CardDescription>
                 </div>
               </div>

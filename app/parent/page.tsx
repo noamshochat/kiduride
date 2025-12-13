@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { format } from 'date-fns'
 import { Calendar, Users, MapPin, CheckCircle2, XCircle, Plus, X, Home, Phone } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
+import { useActivity } from '@/components/activity-provider'
 
 interface ChildEntry {
   id: string
@@ -26,6 +27,7 @@ interface ChildEntry {
 
 export default function ParentPage() {
   const { user, logout } = useAuth()
+  const { activity } = useActivity()
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [rides, setRides] = useState<Ride[]>([])
@@ -69,17 +71,44 @@ export default function ParentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, router])
 
-  // Load rides when date changes (but only if user is logged in)
+  // Load rides when date changes or activity changes (but only if user is logged in)
   useEffect(() => {
     if (user) {
       loadRides()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate])
+  }, [selectedDate, activity])
 
   const loadRides = async () => {
     const dateRides = await supabaseDb.getRidesByDate(selectedDate)
-    setRides(dateRides)
+    
+    // Filter by activity if activity is set
+    let filtered = dateRides
+    if (activity === 'tennis') {
+      filtered = dateRides.filter(ride => ride.direction === 'to-tennis-center' || ride.direction === 'back-home')
+    } else if (activity === 'kidu') {
+      filtered = dateRides.filter(ride => ride.direction === 'to-school' || ride.direction === 'from-school' || ride.direction === 'to-train-station')
+    }
+    
+    setRides(filtered)
+  }
+
+  // Get direction display label
+  const getDirectionLabel = (direction: string) => {
+    switch (direction) {
+      case 'to-school':
+        return 'To university'
+      case 'from-school':
+        return 'From university'
+      case 'to-train-station':
+        return 'To train station'
+      case 'to-tennis-center':
+        return 'To Tennis Center'
+      case 'back-home':
+        return 'Back Home'
+      default:
+        return direction
+    }
   }
 
   const addChildEntry = () => {
@@ -337,11 +366,7 @@ export default function ParentPage() {
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-lg">
-                          {ride.direction === 'to-school'
-                          ? 'To university' 
-                          : ride.direction === 'to-train-station'
-                          ? 'To train station'
-                          : 'From university'}
+                          {getDirectionLabel(ride.direction)}
                         </CardTitle>
                         <CardDescription>
                           {format(new Date(ride.date), 'MMM d, yyyy')} • {ride.driverName}
@@ -454,12 +479,7 @@ export default function ParentPage() {
                 <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
                   <p><strong>Ride Details:</strong></p>
                   <p>Date: {format(new Date(selectedRide.date), 'MMM d, yyyy')}</p>
-                  <p>Direction: {selectedRide.direction === 'to-school'  
-                          ? 'To university' 
-                          : selectedRide.direction === 'to-train-station'
-                          ? 'To train station'
-                          : 'From university'}
-                          </p>
+                  <p>Direction: {getDirectionLabel(selectedRide.direction)}</p>
                   <p>Pickup Location: {selectedRide.pickupAddress}</p>
                   <p>Available Seats: {selectedRide.availableSeats}</p>
                 </div>

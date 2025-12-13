@@ -4,6 +4,7 @@ import { Calendar } from 'lucide-react'
 import { Button } from './ui/button'
 import { Ride } from '@/lib/demo-data'
 import { format, parseISO } from 'date-fns'
+import { getDirectionLabel } from '@/lib/utils'
 
 interface AddToCalendarButtonProps {
   ride: Ride
@@ -23,8 +24,8 @@ export function AddToCalendarButton({ ride, driverName, className }: AddToCalend
       const [hours, minutes] = ride.pickupTime.split(':').map(Number)
       startTime.setHours(hours, minutes || 0, 0, 0)
     } else {
-      // Default times: To school: 3:00 PM, To train station: 3:00 PM, From school: 07:00 PM
-      if (ride.direction === 'to-school') {
+      // Default times: To school: 8:00 AM, To train station: 7:00 AM, From school: 3:00 PM, Tennis: 8:00 AM, Back home: 3:00 PM
+      if (ride.direction === 'to-school' || ride.direction === 'to-tennis-center') {
         startTime.setHours(8, 0, 0, 0)
       } else if (ride.direction === 'to-train-station') {
         startTime.setHours(7, 0, 0, 0)
@@ -48,11 +49,7 @@ export function AddToCalendarButton({ ride, driverName, className }: AddToCalend
     // Format date for description
     const formattedDate = format(startTime, 'MMM d, yyyy')
     const formattedTime = format(startTime, 'h:mm a')
-    const direction = ride.direction === 'to-school'  
-      ? 'To university' 
-      : ride.direction === 'to-train-station'
-      ? 'To train station'
-      : 'From university'
+    const direction = getDirectionLabel(ride.direction)
     
     // Generate ride URL
     const rideUrl = typeof window !== 'undefined' 

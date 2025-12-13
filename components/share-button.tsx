@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { useToast } from './ui/toast'
 import { useRef } from 'react'
 import html2canvas from 'html2canvas'
+import { getDirectionLabel } from '@/lib/utils'
 
 interface ShareButtonProps {
   ride: Ride
@@ -20,7 +21,7 @@ export function ShareButton({ ride, driverName, className }: ShareButtonProps) {
 
   const generateShareText = (): string => {
     const date = format(new Date(ride.date), 'MMM d, yyyy')
-    const direction = ride.direction === 'to-school'  ? 'To university': ride.direction === 'to-train-station'? 'To train station': 'From university'
+    const direction = getDirectionLabel(ride.direction)
     const shareUrl = typeof window !== 'undefined' 
       ? `${window.location.origin}/ride/${ride.id}`
       : ''
@@ -172,13 +173,8 @@ export function ShareButton({ ride, driverName, className }: ShareButtonProps) {
     }
   }
 
-  const direction = ride.direction === 'to-school' 
-    ? 'To university' 
-    : ride.direction === 'to-train-station'
-    ? 'To train station'
-    : 'From university'
-  
-  const DirectionIcon = ride.direction === 'from-school' ? ArrowLeft : ArrowRight
+  const direction = getDirectionLabel(ride.direction)
+  const DirectionIcon = ride.direction === 'from-school' || ride.direction === 'back-home' ? ArrowLeft : ArrowRight
   const shareUrl = generateShareUrl()
 
   return (

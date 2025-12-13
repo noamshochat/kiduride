@@ -18,9 +18,11 @@ import { Navigation } from '@/components/navigation'
 import { ShareButton } from '@/components/share-button'
 import { AddToCalendarButton } from '@/components/add-to-calendar-button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useActivity } from '@/components/activity-provider'
 
 export default function DriverPage() {
   const { user, logout } = useAuth()
+  const { activity } = useActivity()
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [showAllRides, setShowAllRides] = useState(false) // Admin: show all rides or filter by date
@@ -34,12 +36,56 @@ export default function DriverPage() {
   const [usersMap, setUsersMap] = useState<Record<string, User>>({})
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
-    direction: 'to-school' as 'to-school' | 'from-school' | 'to-train-station',
+    direction: 'to-school' as 'to-school' | 'from-school' | 'to-train-station' | 'to-tennis-center' | 'back-home',
     totalSeats: 0,
     pickupAddress: '',
     pickupTime: '',
     notes: '',
   })
+
+  // Get valid directions based on activity
+  const getValidDirections = () => {
+    if (activity === 'tennis') {
+      return [
+        { value: 'to-tennis-center' as const, label: 'To Tennis Center' },
+        { value: 'back-home' as const, label: 'Back Home' },
+      ]
+    } else {
+      // Default to kidu directions
+      return [
+        { value: 'to-school' as const, label: 'To university' },
+        { value: 'from-school' as const, label: 'From university' },
+        { value: 'to-train-station' as const, label: 'To train station' },
+      ]
+    }
+  }
+
+  // Get direction display label
+  const getDirectionLabel = (direction: string) => {
+    switch (direction) {
+      case 'to-school':
+        return 'To university'
+      case 'from-school':
+        return 'From university'
+      case 'to-train-station':
+        return 'To train station'
+      case 'to-tennis-center':
+        return 'To Tennis Center'
+      case 'back-home':
+        return 'Back Home'
+      default:
+        return direction
+    }
+  }
+
+  // Initialize form direction based on activity
+  useEffect(() => {
+    if (activity === 'tennis') {
+      setFormData(prev => ({ ...prev, direction: 'to-tennis-center' }))
+    } else {
+      setFormData(prev => ({ ...prev, direction: 'to-school' }))
+    }
+  }, [activity])
   const [updateData, setUpdateData] = useState({
     totalSeats: 0,
     pickupAddress: '',
@@ -132,19 +178,28 @@ export default function DriverPage() {
     }
   }
 
-  // Filter rides by selected date (date filter always applies)
+  // Filter rides by selected date and activity (date filter always applies)
   useEffect(() => {
-    // Always filter by selected date
-    const dateFiltered = allRides.filter(ride => ride.date === selectedDate)
+    // First filter by date
+    let filtered = allRides.filter(ride => ride.date === selectedDate)
+    
+    // Then filter by activity if activity is set
+    if (activity === 'tennis') {
+      filtered = filtered.filter(ride => ride.direction === 'to-tennis-center' || ride.direction === 'back-home')
+    } else if (activity === 'kidu') {
+      filtered = filtered.filter(ride => ride.direction === 'to-school' || ride.direction === 'from-school' || ride.direction === 'to-train-station')
+    }
+    
     console.log('Driver mode - Filtering rides:', {
       totalRides: allRides.length,
       selectedDate,
-      filteredCount: dateFiltered.length,
+      activity,
+      filteredCount: filtered.length,
       rideDates: allRides.map(r => ({ id: r.id, date: r.date, direction: r.direction, driverId: r.driverId })),
-      filteredRides: dateFiltered.map(r => ({ id: r.id, date: r.date, direction: r.direction }))
+      filteredRides: filtered.map(r => ({ id: r.id, date: r.date, direction: r.direction }))
     })
-    setRides(dateFiltered)
-  }, [allRides, selectedDate])
+    setRides(filtered)
+  }, [allRides, selectedDate, activity])
 
   const handleCreateRide = async () => {
     if (!user) return
@@ -361,7 +416,7 @@ export default function DriverPage() {
                   <Label htmlFor="direction">Direction</Label>
                   <Select
                     value={formData.direction}
-                    onValueChange={(value: 'to-school' | 'from-school' | 'to-train-station') =>
+                    onValueChange={(value: 'to-school' | 'from-school' | 'to-train-station' | 'to-tennis-center' | 'back-home') =>
                       setFormData({ ...formData, direction: value })
                     }
                   >
@@ -369,9 +424,11 @@ export default function DriverPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="to-school">To university</SelectItem>
-                      <SelectItem value="from-school">From university</SelectItem>
-                      <SelectItem value="to-train-station">To train station</SelectItem>
+                      {getValidDirections().map(dir => (
+                        <SelectItem key={dir.value} value={dir.value}>
+                          {dir.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -444,12 +501,7 @@ export default function DriverPage() {
                   <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
                     <p><strong>Ride Details:</strong></p>
                     <p>Date: {format(new Date(selectedRide.date), 'MMM d, yyyy')}</p>
-                    <p>Direction: {selectedRide.direction === 'to-school'  
-                            ? 'To university' 
-                            : selectedRide.direction === 'to-train-station'
-                            ? 'To train station'
-                            : 'From university'}
-                    </p>
+                    <p>Direction: {getDirectionLabel(selectedRide.direction)}</p>
                     <p>Assigned Passengers: {selectedRide.passengers.length}</p>
                   </div>
 
@@ -537,11 +589,7 @@ export default function DriverPage() {
                         {format(new Date(ride.date), 'MMM d, yyyy')}
                       </CardTitle>
                       <CardDescription className="text-xs sm:text-sm break-words">
-                        {ride.direction === 'to-school' 
-                          ? 'To university' 
-                          : ride.direction === 'to-train-station'
-                          ? 'To train station'
-                          : 'From university'}
+                        {getDirectionLabel(ride.direction)}
                       </CardDescription>
                       {isAdmin && ride.driverId !== user.id && (
                         <CardDescription className="text-xs text-muted-foreground mt-1 break-words">
