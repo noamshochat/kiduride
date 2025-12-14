@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const query = searchParams.get('query')
+    const activity = searchParams.get('activity') // 'kidu' or 'tennis'
 
     if (!query || query.trim().length === 0) {
       return NextResponse.json({ error: 'Query parameter is required' }, { status: 400 })
@@ -48,9 +49,18 @@ export async function GET(request: NextRequest) {
     })
 
     // Filter by first name, last name, and full name concatenation in JavaScript
+    // Also filter by activity registration if activity is specified
     // This ensures reliable matching for Hebrew text regardless of database collation
     // Note: For Hebrew text, case doesn't exist, so direct string matching is fine
     const filteredData = childrenData.filter((child: any) => {
+      // Filter by activity registration if activity is specified
+      if (activity === 'kidu' && !child.is_registered_kidu) {
+        return false
+      }
+      if (activity === 'tennis' && !child.is_registered_tennis) {
+        return false
+      }
+      
       // Ensure we're working with strings and trim whitespace
       const firstName = String(child.first_name || '').trim()
       const lastName = String(child.last_name || '').trim()
@@ -72,6 +82,8 @@ export async function GET(request: NextRequest) {
       id: child.id,
       firstName: child.first_name,
       lastName: child.last_name || undefined,
+      is_registered_kidu: child.is_registered_kidu || false,
+      is_registered_tennis: child.is_registered_tennis || false,
     }))
 
     // Prevent caching to ensure fresh results

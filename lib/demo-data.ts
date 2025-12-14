@@ -18,6 +18,8 @@ export interface Child {
   lastName?: string;
   parentIds?: string[]; // Array of parent IDs (many-to-many)
   parents?: User[]; // Populated parent objects (when fetched with relations)
+  is_registered_kidu?: boolean; // Whether child is registered for Kidumathematics
+  is_registered_tennis?: boolean; // Whether child is registered for Tennis Hanuka Camp
 }
 
 export interface ChildParent {

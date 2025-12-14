@@ -119,6 +119,8 @@ export async function POST(request: NextRequest) {
           id: childId,
           first_name: child.firstName.trim(),
           last_name: child.lastName?.trim() || null,
+          is_registered_kidu: child.isRegisteredKidu === true,
+          is_registered_tennis: child.isRegisteredTennis === true,
         }
         console.log('Inserting child with data:', JSON.stringify(childInsertData))
         
@@ -168,6 +170,8 @@ export async function POST(request: NextRequest) {
           id: childData.id,
           firstName: childData.first_name,
           lastName: childData.last_name || undefined,
+          is_registered_kidu: childData.is_registered_kidu || false,
+          is_registered_tennis: childData.is_registered_tennis || false,
         })
       }
       

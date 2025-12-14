@@ -12,6 +12,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 interface ChildInput {
   firstName: string
   lastName: string
+  isRegisteredKidu: boolean
+  isRegisteredTennis: boolean
 }
 
 export default function BackofficePage() {
@@ -71,7 +73,7 @@ export default function BackofficePage() {
   }
 
   const handleAddChild = () => {
-    setChildren([...children, { firstName: '', lastName: '' }])
+    setChildren([...children, { firstName: '', lastName: '', isRegisteredKidu: false, isRegisteredTennis: false }])
   }
 
   const handleRemoveChild = (index: number) => {
@@ -81,6 +83,16 @@ export default function BackofficePage() {
   const handleChildChange = (index: number, field: 'firstName' | 'lastName', value: string) => {
     const updated = [...children]
     updated[index][field] = value
+    setChildren(updated)
+  }
+
+  const handleChildActivityChange = (index: number, activity: 'kidu' | 'tennis', checked: boolean) => {
+    const updated = [...children]
+    if (activity === 'kidu') {
+      updated[index].isRegisteredKidu = checked
+    } else {
+      updated[index].isRegisteredTennis = checked
+    }
     setChildren(updated)
   }
 
@@ -128,6 +140,8 @@ export default function BackofficePage() {
         children: validChildren.length > 0 ? validChildren.map(c => ({
           firstName: c.firstName.trim(),
           lastName: c.lastName.trim() || undefined,
+          isRegisteredKidu: c.isRegisteredKidu,
+          isRegisteredTennis: c.isRegisteredTennis,
         })) : undefined,
         isRegisteredKidu,
         isRegisteredTennis,
@@ -345,37 +359,64 @@ export default function BackofficePage() {
                 )}
 
                 {children.map((child, index) => (
-                  <div key={index} className="flex gap-2 items-end p-4 border rounded-lg">
-                    <div className="flex-1 space-y-2">
-                      <Label htmlFor={`childFirstName-${index}`}>First Name *</Label>
-                      <Input
-                        id={`childFirstName-${index}`}
-                        type="text"
-                        placeholder="First name"
-                        value={child.firstName}
-                        onChange={(e) => handleChildChange(index, 'firstName', e.target.value)}
-                        required
-                      />
+                  <div key={index} className="p-4 border rounded-lg space-y-4">
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1 space-y-2">
+                        <Label htmlFor={`childFirstName-${index}`}>First Name *</Label>
+                        <Input
+                          id={`childFirstName-${index}`}
+                          type="text"
+                          placeholder="First name"
+                          value={child.firstName}
+                          onChange={(e) => handleChildChange(index, 'firstName', e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <Label htmlFor={`childLastName-${index}`}>Last Name</Label>
+                        <Input
+                          id={`childLastName-${index}`}
+                          type="text"
+                          placeholder="Last name (optional)"
+                          value={child.lastName}
+                          onChange={(e) => handleChildChange(index, 'lastName', e.target.value)}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveChild(index)}
+                        className="mb-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <div className="flex-1 space-y-2">
-                      <Label htmlFor={`childLastName-${index}`}>Last Name</Label>
-                      <Input
-                        id={`childLastName-${index}`}
-                        type="text"
-                        placeholder="Last name (optional)"
-                        value={child.lastName}
-                        onChange={(e) => handleChildChange(index, 'lastName', e.target.value)}
-                      />
+                    <div className="space-y-2">
+                      <Label>Activity Registration</Label>
+                      <div className="flex gap-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`childKidu-${index}`}
+                            checked={child.isRegisteredKidu}
+                            onCheckedChange={(checked) => handleChildActivityChange(index, 'kidu', checked === true)}
+                          />
+                          <Label htmlFor={`childKidu-${index}`} className="font-normal cursor-pointer text-sm">
+                            Kidumathematics
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`childTennis-${index}`}
+                            checked={child.isRegisteredTennis}
+                            onCheckedChange={(checked) => handleChildActivityChange(index, 'tennis', checked === true)}
+                          />
+                          <Label htmlFor={`childTennis-${index}`} className="font-normal cursor-pointer text-sm">
+                            Tennis Hanuka Camp
+                          </Label>
+                        </div>
+                      </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveChild(index)}
-                      className="mb-0"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
                 ))}
               </div>

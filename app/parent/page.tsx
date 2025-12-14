@@ -509,6 +509,7 @@ export default function ParentPage() {
                                 Child {index + 1}
                               </Label>
                               <ChildAutocomplete
+                                activity={activity}
                                 value={entry.child}
                                 onChange={(child) => {
                                   updateChildEntry(entry.id, { 

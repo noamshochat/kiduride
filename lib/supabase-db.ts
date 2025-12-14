@@ -530,11 +530,12 @@ export const supabaseDb = {
   },
 
   // Children functions
-  async searchChildren(query: string): Promise<Child[]> {
+  async searchChildren(query: string, activity?: 'kidu' | 'tennis' | null): Promise<Child[]> {
     try {
       // Add cache-busting timestamp and no-cache headers to ensure fresh results
       const timestamp = Date.now()
-      const response = await fetch(`/api/children/search?query=${encodeURIComponent(query)}&_t=${timestamp}`, {
+      const activityParam = activity ? `&activity=${encodeURIComponent(activity)}` : ''
+      const response = await fetch(`/api/children/search?query=${encodeURIComponent(query)}${activityParam}&_t=${timestamp}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',

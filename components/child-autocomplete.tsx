@@ -13,6 +13,7 @@ interface ChildAutocompleteProps {
   placeholder?: string
   className?: string
   disabled?: boolean
+  activity?: 'kidu' | 'tennis' | null // Filter children by activity registration
 }
 
 export function ChildAutocomplete({
@@ -21,6 +22,7 @@ export function ChildAutocomplete({
   placeholder = 'Search for a child...',
   className = '',
   disabled = false,
+  activity = null,
 }: ChildAutocompleteProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Child[]>([])
@@ -62,7 +64,7 @@ export function ChildAutocomplete({
 
       setIsLoading(true)
       try {
-        const children = await supabaseDb.searchChildren(query)
+        const children = await supabaseDb.searchChildren(query, activity)
         setResults(children)
         setIsOpen(children.length > 0)
       } catch (error) {
@@ -76,7 +78,7 @@ export function ChildAutocomplete({
 
     const debounceTimer = setTimeout(searchChildren, 300)
     return () => clearTimeout(debounceTimer)
-  }, [query])
+  }, [query, activity])
 
   const handleSelect = (child: Child) => {
     onChange(child)
