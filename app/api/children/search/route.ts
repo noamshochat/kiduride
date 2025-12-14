@@ -25,9 +25,10 @@ export async function GET(request: NextRequest) {
 
     // Fetch all children WITHOUT ORDER BY to avoid Hebrew text collation issues
     // We'll sort in JavaScript instead, which handles Hebrew text more reliably
+    // Explicitly select all columns including activity registration fields
     const { data, error } = await supabase
       .from('children')
-      .select('*')
+      .select('id, first_name, last_name, created_at, updated_at, is_registered_kidu, is_registered_tennis')
       .limit(200) // Fetch more records to filter client-side
 
     if (error) {
@@ -45,6 +46,14 @@ export async function GET(request: NextRequest) {
       // Check if first_name/last_name columns exist
       const sampleKeys = Object.keys(data[0])
       console.log('Available columns in child object:', sampleKeys)
+      
+      // Log all children names for debugging
+      console.log('All children names:', data.map((c: any) => ({
+        id: c.id,
+        first_name: c.first_name,
+        last_name: c.last_name,
+        is_registered_tennis: c.is_registered_tennis
+      })))
     } else {
       console.log('WARNING: No children found in database!')
     }
@@ -71,18 +80,19 @@ export async function GET(request: NextRequest) {
     // Note: For Hebrew text, case doesn't exist, so direct string matching is fine
     const filteredData = childrenData.filter((child: any) => {
       // Filter by activity registration if activity is specified
-      // Handle case where columns might not exist yet (migration not run)
+      // Handle case where columns might not exist yet (migration not run) or are NULL
+      // NULL/undefined should be treated as false (not registered)
       if (activity === 'kidu') {
         const isRegistered = child.is_registered_kidu === true
         if (!isRegistered) {
-          console.log(`Child ${child.first_name} filtered out: not registered for kidu (is_registered_kidu: ${child.is_registered_kidu})`)
+          console.log(`Child ${child.first_name || child.id} filtered out: not registered for kidu (is_registered_kidu: ${child.is_registered_kidu})`)
           return false
         }
       }
       if (activity === 'tennis') {
         const isRegistered = child.is_registered_tennis === true
         if (!isRegistered) {
-          console.log(`Child ${child.first_name} filtered out: not registered for tennis (is_registered_tennis: ${child.is_registered_tennis})`)
+          console.log(`Child ${child.first_name || child.id} filtered out: not registered for tennis (is_registered_tennis: ${child.is_registered_tennis})`)
           return false
         }
       }
