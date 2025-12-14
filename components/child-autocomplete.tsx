@@ -63,8 +63,11 @@ export function ChildAutocomplete({
       }
 
       setIsLoading(true)
+      setIsOpen(false) // Close dropdown while searching
       try {
+        console.log('Searching children with query:', query, 'activity:', activity)
         const children = await supabaseDb.searchChildren(query, activity)
+        console.log('Search results:', children)
         setResults(children)
         setIsOpen(children.length > 0)
       } catch (error) {
@@ -92,21 +95,26 @@ export function ChildAutocomplete({
     setIsOpen(false)
   }
 
-  const displayValue = value
-    ? `${value.firstName}${value.lastName ? ' ' + value.lastName : ''}`
-    : query
-
   return (
     <div ref={wrapperRef} className={`relative ${className}`}>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
-          value={displayValue}
+          value={query}
           onChange={(e) => {
-            setQuery(e.target.value)
-            if (!e.target.value) {
+            const newQuery = e.target.value
+            setQuery(newQuery)
+            if (!newQuery) {
               onChange(null)
+            } else {
+              // Clear value when user starts typing something different from the selected value
+              if (value) {
+                const valueDisplay = `${value.firstName}${value.lastName ? ' ' + value.lastName : ''}`
+                if (newQuery !== valueDisplay) {
+                  onChange(null)
+                }
+              }
             }
           }}
           onFocus={() => {
@@ -118,7 +126,7 @@ export function ChildAutocomplete({
           disabled={disabled}
           className="pl-10 pr-10"
         />
-        {value && (
+        {value && query === `${value.firstName}${value.lastName ? ' ' + value.lastName : ''}` && (
           <Button
             type="button"
             variant="ghost"
