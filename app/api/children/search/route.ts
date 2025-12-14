@@ -37,7 +37,16 @@ export async function GET(request: NextRequest) {
 
     console.log(`Fetched ${data?.length || 0} children from database`)
     if (data && data.length > 0) {
-      console.log('Sample child:', JSON.stringify(data[0]))
+      console.log('Sample child (full object):', JSON.stringify(data[0], null, 2))
+      console.log('Sample child first_name:', data[0].first_name)
+      console.log('Sample child last_name:', data[0].last_name)
+      console.log('Sample child is_registered_tennis:', data[0].is_registered_tennis)
+      
+      // Check if first_name/last_name columns exist
+      const sampleKeys = Object.keys(data[0])
+      console.log('Available columns in child object:', sampleKeys)
+    } else {
+      console.log('WARNING: No children found in database!')
     }
 
     // Sort in JavaScript to avoid database collation issues with Hebrew text
@@ -84,6 +93,12 @@ export async function GET(request: NextRequest) {
       const fullName = `${firstName} ${lastName}`.trim()
       const search = String(searchTerm).trim()
       
+      // Skip children without names
+      if (!firstName && !lastName) {
+        console.log(`Skipping child ${child.id}: no first_name or last_name`)
+        return false
+      }
+      
       // Direct string matching (Hebrew doesn't have case)
       // Check if search term appears in first name, last name, or full name
       // Use indexOf for more reliable matching than includes
@@ -93,19 +108,33 @@ export async function GET(request: NextRequest) {
         fullName.indexOf(search) !== -1
       )
       
+      if (matches) {
+        console.log(`Match found: ${firstName} ${lastName} (id: ${child.id})`)
+      }
+      
       return matches
     }).slice(0, 50) // Limit to 50 results after filtering
 
     console.log(`After filtering: ${filteredData.length} children match query "${searchTerm}"${activity ? ` and activity "${activity}"` : ''}`)
 
     // Transform to match our interface
-    const children = filteredData.map((child: any) => ({
-      id: child.id,
-      firstName: child.first_name,
-      lastName: child.last_name || undefined,
-      is_registered_kidu: child.is_registered_kidu || false,
-      is_registered_tennis: child.is_registered_tennis || false,
-    }))
+    const children = filteredData.map((child: any) => {
+      // Handle case where first_name/last_name might be null or missing
+      const firstName = child.first_name || ''
+      const lastName = child.last_name || undefined
+      
+      if (!firstName && !lastName) {
+        console.warn(`Child ${child.id} has no first_name or last_name`)
+      }
+      
+      return {
+        id: child.id,
+        firstName: firstName,
+        lastName: lastName,
+        is_registered_kidu: child.is_registered_kidu || false,
+        is_registered_tennis: child.is_registered_tennis || false,
+      }
+    })
 
     // Prevent caching to ensure fresh results
     return NextResponse.json(children, {
