@@ -51,11 +51,26 @@ export async function GET(request: NextRequest) {
       console.log('Available columns in child object:', sampleKeys)
       
       // Log all children names for debugging
-      console.log('All children names:', data.map((c: any) => ({
+      const allChildrenNames = data.map((c: any) => ({
         id: c.id,
         first_name: c.first_name,
         last_name: c.last_name,
         is_registered_kidu: c.is_registered_kidu,
+        is_registered_tennis: c.is_registered_tennis
+      }))
+      console.log('All children names:', allChildrenNames)
+      
+      // Specifically check if גיא and עמית are in the fetched data
+      const guyChildren = data.filter((c: any) => c.first_name && c.first_name.includes('גיא'))
+      const amitChildren = data.filter((c: any) => c.first_name && c.first_name.includes('עמית'))
+      console.log(`Children with "גיא" in name:`, guyChildren.map((c: any) => ({
+        first_name: c.first_name,
+        last_name: c.last_name,
+        is_registered_tennis: c.is_registered_tennis
+      })))
+      console.log(`Children with "עמית" in name:`, amitChildren.map((c: any) => ({
+        first_name: c.first_name,
+        last_name: c.last_name,
         is_registered_tennis: c.is_registered_tennis
       })))
       
