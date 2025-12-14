@@ -44,6 +44,12 @@ export default function BackofficePage() {
   const [isLinking, setIsLinking] = useState(false)
   const [linkError, setLinkError] = useState('')
   const [linkSuccess, setLinkSuccess] = useState('')
+  
+  // Create new parent state (when parent doesn't exist)
+  const [newParentName, setNewParentName] = useState('')
+  const [newParentPhone, setNewParentPhone] = useState('')
+  const [newParentKidu, setNewParentKidu] = useState(false)
+  const [newParentTennis, setNewParentTennis] = useState(false)
 
   // Check if already authenticated (stored in sessionStorage)
   useEffect(() => {
@@ -112,6 +118,22 @@ export default function BackofficePage() {
     if (!parentEmailSearch.trim()) {
       setLinkError('Please enter a parent email')
       setFoundParent(null)
+      setNewParentName('')
+      setNewParentPhone('')
+      setNewParentKidu(false)
+      setNewParentTennis(false)
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(parentEmailSearch.trim())) {
+      setLinkError('Invalid email format')
+      setFoundParent(null)
+      setNewParentName('')
+      setNewParentPhone('')
+      setNewParentKidu(false)
+      setNewParentTennis(false)
       return
     }
 
@@ -120,26 +142,36 @@ export default function BackofficePage() {
       if (parent) {
         setFoundParent(parent)
         setLinkError('')
+        // Clear new parent fields
+        setNewParentName('')
+        setNewParentPhone('')
+        setNewParentKidu(false)
+        setNewParentTennis(false)
       } else {
         setFoundParent(null)
-        setLinkError('Parent not found with this email')
+        setLinkError('')
+        // Parent doesn't exist - show form to create them
       }
     } catch (error) {
       console.error('Error searching parent:', error)
       setLinkError('Error searching for parent')
       setFoundParent(null)
+      setNewParentName('')
+      setNewParentPhone('')
+      setNewParentKidu(false)
+      setNewParentTennis(false)
     }
   }
 
-  // Link parent to child
+  // Link parent to child (or create parent first if they don't exist)
   const handleLinkParentToChild = async () => {
     if (!selectedChild) {
       setLinkError('Please select a child')
       return
     }
 
-    if (!foundParent) {
-      setLinkError('Please search and find a parent first')
+    if (!parentEmailSearch.trim()) {
+      setLinkError('Please enter a parent email')
       return
     }
 
@@ -148,12 +180,51 @@ export default function BackofficePage() {
     setLinkSuccess('')
 
     try {
-      const updatedChild = await supabaseDb.linkParentToChild(selectedChild.id, foundParent.id)
-      setLinkSuccess(`Successfully linked ${foundParent.name} (${foundParent.email}) to ${updatedChild.firstName}${updatedChild.lastName ? ' ' + updatedChild.lastName : ''}`)
+      let parentToLink: User
+
+      // If parent exists, use them; otherwise create a new parent
+      if (foundParent) {
+        parentToLink = foundParent
+      } else {
+        // Create new parent
+        if (!newParentName.trim()) {
+          setLinkError('Please enter parent name to create new parent')
+          setIsLinking(false)
+          return
+        }
+
+        const createResponse = await fetch('/api/backoffice/create-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newParentName.trim(),
+            email: parentEmailSearch.trim(),
+            phone: newParentPhone.trim() || undefined,
+            isRegisteredKidu: newParentKidu,
+            isRegisteredTennis: newParentTennis,
+          }),
+        })
+
+        const createData = await createResponse.json()
+        if (!createResponse.ok) {
+          throw new Error(createData.error || 'Failed to create parent')
+        }
+
+        parentToLink = createData.user
+      }
+
+      // Link parent to child
+      const updatedChild = await supabaseDb.linkParentToChild(selectedChild.id, parentToLink.id)
+      setLinkSuccess(`Successfully linked ${parentToLink.name} (${parentToLink.email}) to ${updatedChild.firstName}${updatedChild.lastName ? ' ' + updatedChild.lastName : ''}`)
+      
       // Reset form
       setSelectedChild(null)
       setParentEmailSearch('')
       setFoundParent(null)
+      setNewParentName('')
+      setNewParentPhone('')
+      setNewParentKidu(false)
+      setNewParentTennis(false)
     } catch (error: any) {
       console.error('Error linking parent:', error)
       setLinkError(error.message || 'Failed to link parent to child')
@@ -189,13 +260,8 @@ export default function BackofficePage() {
       return
     }
 
-    // Validate children
+    // Children are optional - validate only if provided
     const validChildren = children.filter(c => c.firstName.trim())
-    if (validChildren.length === 0 && !childName.trim()) {
-      setError('Please provide at least one child name or add children')
-      setIsSubmitting(false)
-      return
-    }
 
     try {
       const requestBody = {
@@ -550,6 +616,11 @@ export default function BackofficePage() {
                       setParentEmailSearch(e.target.value)
                       setFoundParent(null)
                       setLinkError('')
+                      setLinkSuccess('')
+                      setNewParentName('')
+                      setNewParentPhone('')
+                      setNewParentKidu(false)
+                      setNewParentTennis(false)
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -576,6 +647,63 @@ export default function BackofficePage() {
                     )}
                   </div>
                 )}
+
+                {/* Show form to create new parent if not found */}
+                {!foundParent && parentEmailSearch.trim() && (
+                  <div className="p-4 border rounded-lg space-y-4 bg-blue-50/50">
+                    <p className="text-sm font-medium text-blue-800">
+                      Parent not found. Please fill in the details to create a new parent:
+                    </p>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="newParentName">Parent Name *</Label>
+                        <Input
+                          id="newParentName"
+                          type="text"
+                          placeholder="Enter parent's full name"
+                          value={newParentName}
+                          onChange={(e) => setNewParentName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="newParentPhone">Phone (Optional)</Label>
+                        <Input
+                          id="newParentPhone"
+                          type="tel"
+                          placeholder="Enter parent's phone number"
+                          value={newParentPhone}
+                          onChange={(e) => setNewParentPhone(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Activity Registration</Label>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="newParentKidu"
+                              checked={newParentKidu}
+                              onCheckedChange={(checked) => setNewParentKidu(checked === true)}
+                            />
+                            <Label htmlFor="newParentKidu" className="font-normal cursor-pointer text-sm">
+                              Registered for Kidumathematics
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="newParentTennis"
+                              checked={newParentTennis}
+                              onCheckedChange={(checked) => setNewParentTennis(checked === true)}
+                            />
+                            <Label htmlFor="newParentTennis" className="font-normal cursor-pointer text-sm">
+                              Registered for Tennis Hanuka Camp
+                            </Label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Error and Success Messages */}
@@ -595,11 +723,11 @@ export default function BackofficePage() {
               <Button
                 type="button"
                 onClick={handleLinkParentToChild}
-                disabled={!selectedChild || !foundParent || isLinking}
+                disabled={!selectedChild || !parentEmailSearch.trim() || (!foundParent && !newParentName.trim()) || isLinking}
                 className="w-full"
               >
                 <Link2 className="h-4 w-4 mr-2" />
-                {isLinking ? 'Linking...' : 'Link Parent to Child'}
+                {isLinking ? 'Linking...' : foundParent ? 'Link Parent to Child' : 'Create Parent & Link to Child'}
               </Button>
             </div>
           </CardContent>

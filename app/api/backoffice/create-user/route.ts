@@ -59,13 +59,14 @@ export async function POST(request: NextRequest) {
     const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`
 
     // Determine child_name - use first child's name if provided, otherwise use childName
+    // If no children provided, use parent name as fallback (required field in DB)
     let finalChildName = childName?.trim() || ''
     if (!finalChildName && children && children.length > 0) {
       const firstChild = children[0]
       finalChildName = `${firstChild.firstName}${firstChild.lastName ? ' ' + firstChild.lastName : ''}`
     }
     
-    // If still no child name, use a default
+    // If still no child name, use parent name as fallback (required field in DB)
     if (!finalChildName) {
       finalChildName = name.trim() // Fallback to parent name
     }
