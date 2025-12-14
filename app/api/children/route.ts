@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { firstName, lastName, parentIds } = body
+    const { firstName, lastName, parentIds, isRegisteredKidu, isRegisteredTennis } = body
 
     // Validation
     if (!firstName || firstName.trim().length === 0) {
@@ -47,6 +47,8 @@ export async function POST(request: NextRequest) {
         id: childId,
         first_name: firstName.trim(),
         last_name: lastName?.trim() || null,
+        is_registered_kidu: isRegisteredKidu === true,
+        is_registered_tennis: isRegisteredTennis === true,
       })
       .select()
       .single()
@@ -108,6 +110,8 @@ export async function POST(request: NextRequest) {
       firstName: childWithParents.first_name,
       lastName: childWithParents.last_name || undefined,
       parentIds: parentIds,
+      is_registered_kidu: childWithParents.is_registered_kidu || false,
+      is_registered_tennis: childWithParents.is_registered_tennis || false,
       parents: childWithParents.child_parents?.map((cp: any) => ({
         id: cp.users.id,
         name: cp.users.name,

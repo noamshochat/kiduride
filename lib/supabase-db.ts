@@ -561,12 +561,18 @@ export const supabaseDb = {
     }
   },
 
-  async createChild(child: { firstName: string; lastName?: string; parentIds: string[] }): Promise<Child> {
+  async createChild(child: { firstName: string; lastName?: string; parentIds: string[]; isRegisteredKidu?: boolean; isRegisteredTennis?: boolean }): Promise<Child> {
     try {
       const response = await fetch('/api/children', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(child),
+        body: JSON.stringify({
+          firstName: child.firstName,
+          lastName: child.lastName,
+          parentIds: child.parentIds,
+          isRegisteredKidu: child.isRegisteredKidu || false,
+          isRegisteredTennis: child.isRegisteredTennis || false,
+        }),
       })
 
       if (!response.ok) {

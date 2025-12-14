@@ -51,6 +51,21 @@ export default function BackofficePage() {
   const [newParentKidu, setNewParentKidu] = useState(false)
   const [newParentTennis, setNewParentTennis] = useState(false)
 
+  // Create new child and link to parent state
+  const [newChildFirstName, setNewChildFirstName] = useState('')
+  const [newChildLastName, setNewChildLastName] = useState('')
+  const [newChildKidu, setNewChildKidu] = useState(false)
+  const [newChildTennis, setNewChildTennis] = useState(false)
+  const [newChildParentEmail, setNewChildParentEmail] = useState('')
+  const [newChildFoundParent, setNewChildFoundParent] = useState<User | null>(null)
+  const [newChildParentName, setNewChildParentName] = useState('')
+  const [newChildParentPhone, setNewChildParentPhone] = useState('')
+  const [newChildParentKidu, setNewChildParentKidu] = useState(false)
+  const [newChildParentTennis, setNewChildParentTennis] = useState(false)
+  const [isCreatingChild, setIsCreatingChild] = useState(false)
+  const [createChildError, setCreateChildError] = useState('')
+  const [createChildSuccess, setCreateChildSuccess] = useState('')
+
   // Check if already authenticated (stored in sessionStorage)
   useEffect(() => {
     const authStatus = sessionStorage.getItem('backoffice_authenticated')
@@ -160,6 +175,136 @@ export default function BackofficePage() {
       setNewParentPhone('')
       setNewParentKidu(false)
       setNewParentTennis(false)
+    }
+  }
+
+  // Search for parent by email (for create child section)
+  const handleSearchParentForChild = async () => {
+    if (!newChildParentEmail.trim()) {
+      setCreateChildError('Please enter a parent email')
+      setNewChildFoundParent(null)
+      setNewChildParentName('')
+      setNewChildParentPhone('')
+      setNewChildParentKidu(false)
+      setNewChildParentTennis(false)
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(newChildParentEmail.trim())) {
+      setCreateChildError('Invalid email format')
+      setNewChildFoundParent(null)
+      setNewChildParentName('')
+      setNewChildParentPhone('')
+      setNewChildParentKidu(false)
+      setNewChildParentTennis(false)
+      return
+    }
+
+    try {
+      const parent = await supabaseDb.getUserByEmail(newChildParentEmail.trim())
+      if (parent) {
+        setNewChildFoundParent(parent)
+        setCreateChildError('')
+        // Clear new parent fields
+        setNewChildParentName('')
+        setNewChildParentPhone('')
+        setNewChildParentKidu(false)
+        setNewChildParentTennis(false)
+      } else {
+        setNewChildFoundParent(null)
+        setCreateChildError('')
+        // Parent doesn't exist - show form to create them
+      }
+    } catch (error) {
+      console.error('Error searching parent:', error)
+      setCreateChildError('Error searching for parent')
+      setNewChildFoundParent(null)
+      setNewChildParentName('')
+      setNewChildParentPhone('')
+      setNewChildParentKidu(false)
+      setNewChildParentTennis(false)
+    }
+  }
+
+  // Create new child and link to parent
+  const handleCreateChildAndLink = async () => {
+    if (!newChildFirstName.trim()) {
+      setCreateChildError('Please enter child first name')
+      return
+    }
+
+    if (!newChildParentEmail.trim()) {
+      setCreateChildError('Please enter parent email')
+      return
+    }
+
+    setIsCreatingChild(true)
+    setCreateChildError('')
+    setCreateChildSuccess('')
+
+    try {
+      let parentToLink: User
+
+      // If parent exists, use them; otherwise create a new parent
+      if (newChildFoundParent) {
+        parentToLink = newChildFoundParent
+      } else {
+        // Create new parent
+        if (!newChildParentName.trim()) {
+          setCreateChildError('Please enter parent name to create new parent')
+          setIsCreatingChild(false)
+          return
+        }
+
+        const createResponse = await fetch('/api/backoffice/create-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newChildParentName.trim(),
+            email: newChildParentEmail.trim(),
+            phone: newChildParentPhone.trim() || undefined,
+            isRegisteredKidu: newChildParentKidu,
+            isRegisteredTennis: newChildParentTennis,
+          }),
+        })
+
+        const createData = await createResponse.json()
+        if (!createResponse.ok) {
+          throw new Error(createData.error || 'Failed to create parent')
+        }
+
+        parentToLink = createData.user
+      }
+
+      // Create child and link to parent
+      const newChild = await supabaseDb.createChild({
+        firstName: newChildFirstName.trim(),
+        lastName: newChildLastName.trim() || undefined,
+        parentIds: [parentToLink.id],
+        isRegisteredKidu: newChildKidu,
+        isRegisteredTennis: newChildTennis,
+      })
+
+      setCreateChildSuccess(`Successfully created child ${newChild.firstName}${newChild.lastName ? ' ' + newChild.lastName : ''} and linked to ${parentToLink.name} (${parentToLink.email})`)
+      
+      // Reset form
+      setNewChildFirstName('')
+      setNewChildLastName('')
+      setNewChildKidu(false)
+      setNewChildTennis(false)
+      setNewChildParentEmail('')
+      setNewChildFoundParent(null)
+      setNewChildParentName('')
+      setNewChildParentPhone('')
+      setNewChildParentKidu(false)
+      setNewChildParentTennis(false)
+    } catch (error: any) {
+      console.error('Error creating child:', error)
+      setCreateChildError(error.message || 'Failed to create child and link to parent')
+    } finally {
+      setIsCreatingChild(false)
     }
   }
 
@@ -728,6 +873,214 @@ export default function BackofficePage() {
               >
                 <Link2 className="h-4 w-4 mr-2" />
                 {isLinking ? 'Linking...' : foundParent ? 'Link Parent to Child' : 'Create Parent & Link to Child'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Create New Child & Link to Parent */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Create New Child & Link to Parent</CardTitle>
+            <CardDescription>
+              Create a new child and link them to an existing or new parent
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Child Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Child Information</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="newChildFirstName">First Name *</Label>
+                  <Input
+                    id="newChildFirstName"
+                    type="text"
+                    placeholder="Enter child's first name"
+                    value={newChildFirstName}
+                    onChange={(e) => {
+                      setNewChildFirstName(e.target.value)
+                      setCreateChildError('')
+                      setCreateChildSuccess('')
+                    }}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="newChildLastName">Last Name (Optional)</Label>
+                  <Input
+                    id="newChildLastName"
+                    type="text"
+                    placeholder="Enter child's last name"
+                    value={newChildLastName}
+                    onChange={(e) => {
+                      setNewChildLastName(e.target.value)
+                      setCreateChildError('')
+                      setCreateChildSuccess('')
+                    }}
+                  />
+                </div>
+
+                {/* Child Activity Registration */}
+                <div className="space-y-2">
+                  <Label>Activity Registration</Label>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="newChildKidu"
+                        checked={newChildKidu}
+                        onCheckedChange={(checked) => setNewChildKidu(checked === true)}
+                      />
+                      <Label htmlFor="newChildKidu" className="font-normal cursor-pointer text-sm">
+                        Registered for Kidumathematics
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="newChildTennis"
+                        checked={newChildTennis}
+                        onCheckedChange={(checked) => setNewChildTennis(checked === true)}
+                      />
+                      <Label htmlFor="newChildTennis" className="font-normal cursor-pointer text-sm">
+                        Registered for Tennis Hanuka Camp
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Parent Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Parent Information</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="newChildParentEmail">Search Parent by Email</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="newChildParentEmail"
+                      type="email"
+                      placeholder="Enter parent's email address"
+                      value={newChildParentEmail}
+                      onChange={(e) => {
+                        setNewChildParentEmail(e.target.value)
+                        setNewChildFoundParent(null)
+                        setCreateChildError('')
+                        setCreateChildSuccess('')
+                        setNewChildParentName('')
+                        setNewChildParentPhone('')
+                        setNewChildParentKidu(false)
+                        setNewChildParentTennis(false)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleSearchParentForChild()
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleSearchParentForChild}
+                      disabled={!newChildParentEmail.trim()}
+                    >
+                      Search
+                    </Button>
+                  </div>
+                </div>
+
+                {newChildFoundParent && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm font-medium text-green-800">
+                      Found: {newChildFoundParent.name} ({newChildFoundParent.email})
+                    </p>
+                    {newChildFoundParent.phone && (
+                      <p className="text-xs text-green-700 mt-1">Phone: {newChildFoundParent.phone}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Show form to create new parent if not found */}
+                {!newChildFoundParent && newChildParentEmail.trim() && (
+                  <div className="p-4 border rounded-lg space-y-4 bg-blue-50/50">
+                    <p className="text-sm font-medium text-blue-800">
+                      Parent not found. Please fill in the details to create a new parent:
+                    </p>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="newChildParentName">Parent Name *</Label>
+                        <Input
+                          id="newChildParentName"
+                          type="text"
+                          placeholder="Enter parent's full name"
+                          value={newChildParentName}
+                          onChange={(e) => setNewChildParentName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="newChildParentPhone">Phone (Optional)</Label>
+                        <Input
+                          id="newChildParentPhone"
+                          type="tel"
+                          placeholder="Enter parent's phone number"
+                          value={newChildParentPhone}
+                          onChange={(e) => setNewChildParentPhone(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Activity Registration</Label>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="newChildParentKidu"
+                              checked={newChildParentKidu}
+                              onCheckedChange={(checked) => setNewChildParentKidu(checked === true)}
+                            />
+                            <Label htmlFor="newChildParentKidu" className="font-normal cursor-pointer text-sm">
+                              Registered for Kidumathematics
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="newChildParentTennis"
+                              checked={newChildParentTennis}
+                              onCheckedChange={(checked) => setNewChildParentTennis(checked === true)}
+                            />
+                            <Label htmlFor="newChildParentTennis" className="font-normal cursor-pointer text-sm">
+                              Registered for Tennis Hanuka Camp
+                            </Label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Error and Success Messages */}
+              {createChildError && (
+                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <p className="text-sm text-destructive">{createChildError}</p>
+                </div>
+              )}
+
+              {createChildSuccess && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800">{createChildSuccess}</p>
+                </div>
+              )}
+
+              {/* Create Button */}
+              <Button
+                type="button"
+                onClick={handleCreateChildAndLink}
+                disabled={!newChildFirstName.trim() || !newChildParentEmail.trim() || (!newChildFoundParent && !newChildParentName.trim()) || isCreatingChild}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {isCreatingChild ? 'Creating...' : newChildFoundParent ? 'Create Child & Link to Parent' : 'Create Child & Create Parent'}
               </Button>
             </div>
           </CardContent>
