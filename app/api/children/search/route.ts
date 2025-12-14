@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     // Fetch all children WITHOUT ORDER BY to avoid Hebrew text collation issues
     // We'll sort in JavaScript instead, which handles Hebrew text more reliably
     // Explicitly select all columns including activity registration fields
+    console.log('Fetching children from Supabase...')
     const { data, error } = await supabase
       .from('children')
       .select('id, first_name, last_name, created_at, updated_at, is_registered_kidu, is_registered_tennis')
@@ -35,6 +36,8 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching children from database:', error)
       return NextResponse.json({ error: 'Failed to search children', details: error.message }, { status: 500 })
     }
+    
+    console.log('Raw data from Supabase:', JSON.stringify(data?.slice(0, 3), null, 2)) // Log first 3 for debugging
 
     console.log(`Fetched ${data?.length || 0} children from database`)
     if (data && data.length > 0) {
@@ -136,14 +139,20 @@ export async function GET(request: NextRequest) {
       // Direct string matching (Hebrew doesn't have case)
       // Check if search term appears in first name, last name, or full name
       // Use indexOf for more reliable matching than includes
-      const matches = (
-        firstName.indexOf(search) !== -1 ||
-        lastName.indexOf(search) !== -1 ||
-        fullName.indexOf(search) !== -1
-      )
+      const firstNameMatch = firstName.indexOf(search) !== -1
+      const lastNameMatch = lastName.indexOf(search) !== -1
+      const fullNameMatch = fullName.indexOf(search) !== -1
+      const matches = firstNameMatch || lastNameMatch || fullNameMatch
+      
+      // Log detailed matching info for debugging Hebrew text issues
+      if (activity === 'tennis' && (firstName === 'גיא' || firstName === 'עמית' || firstName.includes('גיא') || firstName.includes('עמית'))) {
+        console.log(`DEBUG for ${firstName}: search="${search}", firstName="${firstName}", firstNameMatch=${firstNameMatch}, lastNameMatch=${lastNameMatch}, fullNameMatch=${fullNameMatch}, matches=${matches}`)
+        console.log(`  Search char codes:`, Array.from(search).map(c => c.charCodeAt(0)))
+        console.log(`  FirstName char codes:`, Array.from(firstName).map(c => c.charCodeAt(0)))
+      }
       
       if (matches) {
-        console.log(`Match found: ${firstName} ${lastName} (id: ${child.id})`)
+        console.log(`✓ Match found: ${firstName} ${lastName} (id: ${child.id}) - firstNameMatch: ${firstNameMatch}, lastNameMatch: ${lastNameMatch}, fullNameMatch: ${fullNameMatch}`)
       }
       
       return matches
