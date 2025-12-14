@@ -6,8 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Trash2, Lock } from 'lucide-react'
+import { Plus, Trash2, Lock, Link2 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ChildAutocomplete } from '@/components/child-autocomplete'
+import { Child, User } from '@/lib/demo-data'
+import { supabaseDb } from '@/lib/supabase-db'
 
 interface ChildInput {
   firstName: string
@@ -33,6 +36,14 @@ export default function BackofficePage() {
   const [isRegisteredTennis, setIsRegisteredTennis] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+
+  // Link parent to existing child state
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null)
+  const [parentEmailSearch, setParentEmailSearch] = useState('')
+  const [foundParent, setFoundParent] = useState<User | null>(null)
+  const [isLinking, setIsLinking] = useState(false)
+  const [linkError, setLinkError] = useState('')
+  const [linkSuccess, setLinkSuccess] = useState('')
 
   // Check if already authenticated (stored in sessionStorage)
   useEffect(() => {
@@ -94,6 +105,61 @@ export default function BackofficePage() {
       updated[index].isRegisteredTennis = checked
     }
     setChildren(updated)
+  }
+
+  // Search for parent by email
+  const handleSearchParent = async () => {
+    if (!parentEmailSearch.trim()) {
+      setLinkError('Please enter a parent email')
+      setFoundParent(null)
+      return
+    }
+
+    try {
+      const parent = await supabaseDb.getUserByEmail(parentEmailSearch.trim())
+      if (parent) {
+        setFoundParent(parent)
+        setLinkError('')
+      } else {
+        setFoundParent(null)
+        setLinkError('Parent not found with this email')
+      }
+    } catch (error) {
+      console.error('Error searching parent:', error)
+      setLinkError('Error searching for parent')
+      setFoundParent(null)
+    }
+  }
+
+  // Link parent to child
+  const handleLinkParentToChild = async () => {
+    if (!selectedChild) {
+      setLinkError('Please select a child')
+      return
+    }
+
+    if (!foundParent) {
+      setLinkError('Please search and find a parent first')
+      return
+    }
+
+    setIsLinking(true)
+    setLinkError('')
+    setLinkSuccess('')
+
+    try {
+      const updatedChild = await supabaseDb.linkParentToChild(selectedChild.id, foundParent.id)
+      setLinkSuccess(`Successfully linked ${foundParent.name} (${foundParent.email}) to ${updatedChild.firstName}${updatedChild.lastName ? ' ' + updatedChild.lastName : ''}`)
+      // Reset form
+      setSelectedChild(null)
+      setParentEmailSearch('')
+      setFoundParent(null)
+    } catch (error: any) {
+      console.error('Error linking parent:', error)
+      setLinkError(error.message || 'Failed to link parent to child')
+    } finally {
+      setIsLinking(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -439,6 +505,103 @@ export default function BackofficePage() {
                 {isSubmitting ? 'Creating...' : 'Create Parent & Children'}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Link Parent to Existing Child */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Link Parent to Existing Child</CardTitle>
+            <CardDescription>
+              Add a parent to a child that already exists in the system
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Select Child */}
+              <div className="space-y-2">
+                <Label>Select Child</Label>
+                <ChildAutocomplete
+                  value={selectedChild}
+                  onChange={(child) => {
+                    setSelectedChild(child)
+                    setLinkError('')
+                    setLinkSuccess('')
+                  }}
+                  placeholder="Search for an existing child..."
+                />
+                {selectedChild && (
+                  <p className="text-sm text-muted-foreground">
+                    Selected: {selectedChild.firstName}{selectedChild.lastName ? ' ' + selectedChild.lastName : ''}
+                  </p>
+                )}
+              </div>
+
+              {/* Search Parent */}
+              <div className="space-y-2">
+                <Label htmlFor="parentEmailSearch">Search Parent by Email</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="parentEmailSearch"
+                    type="email"
+                    placeholder="Enter parent's email address"
+                    value={parentEmailSearch}
+                    onChange={(e) => {
+                      setParentEmailSearch(e.target.value)
+                      setFoundParent(null)
+                      setLinkError('')
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleSearchParent()
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleSearchParent}
+                    disabled={!parentEmailSearch.trim()}
+                  >
+                    Search
+                  </Button>
+                </div>
+                {foundParent && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm font-medium text-green-800">
+                      Found: {foundParent.name} ({foundParent.email})
+                    </p>
+                    {foundParent.phone && (
+                      <p className="text-xs text-green-700 mt-1">Phone: {foundParent.phone}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Error and Success Messages */}
+              {linkError && (
+                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <p className="text-sm text-destructive">{linkError}</p>
+                </div>
+              )}
+
+              {linkSuccess && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800">{linkSuccess}</p>
+                </div>
+              )}
+
+              {/* Link Button */}
+              <Button
+                type="button"
+                onClick={handleLinkParentToChild}
+                disabled={!selectedChild || !foundParent || isLinking}
+                className="w-full"
+              >
+                <Link2 className="h-4 w-4 mr-2" />
+                {isLinking ? 'Linking...' : 'Link Parent to Child'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
