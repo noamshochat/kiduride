@@ -144,11 +144,19 @@ export async function GET(request: NextRequest) {
       const fullNameMatch = fullName.indexOf(search) !== -1
       const matches = firstNameMatch || lastNameMatch || fullNameMatch
       
-      // Log detailed matching info for debugging Hebrew text issues
-      if (activity === 'tennis' && (firstName === 'גיא' || firstName === 'עמית' || firstName.includes('גיא') || firstName.includes('עמית'))) {
-        console.log(`DEBUG for ${firstName}: search="${search}", firstName="${firstName}", firstNameMatch=${firstNameMatch}, lastNameMatch=${lastNameMatch}, fullNameMatch=${fullNameMatch}, matches=${matches}`)
-        console.log(`  Search char codes:`, Array.from(search).map(c => c.charCodeAt(0)))
-        console.log(`  FirstName char codes:`, Array.from(firstName).map(c => c.charCodeAt(0)))
+      // Log ALL children being checked (for debugging)
+      if (activity === 'tennis') {
+        console.log(`Checking child: "${firstName}" "${lastName}" - search: "${search}" - firstNameMatch: ${firstNameMatch}, lastNameMatch: ${lastNameMatch}, fullNameMatch: ${fullNameMatch}, matches: ${matches}`)
+        
+        // Log detailed matching info for specific children
+        if (firstName.includes('גיא') || firstName.includes('עמית') || search.includes('גיא') || search.includes('עמית')) {
+          console.log(`  >>> DETAILED DEBUG for "${firstName}":`)
+          console.log(`  Search term: "${search}" (length: ${search.length})`)
+          console.log(`  FirstName: "${firstName}" (length: ${firstName.length})`)
+          console.log(`  Search char codes:`, Array.from(search).map(c => `${c}(${c.charCodeAt(0)})`))
+          console.log(`  FirstName char codes:`, Array.from(firstName).map(c => `${c}(${c.charCodeAt(0)})`))
+          console.log(`  indexOf result: ${firstName.indexOf(search)}`)
+        }
       }
       
       if (matches) {
