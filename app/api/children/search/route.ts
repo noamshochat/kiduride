@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('children')
       .select('id, first_name, last_name, created_at, updated_at, is_registered_kidu, is_registered_tennis')
-      .limit(200) // Fetch more records to filter client-side
+      .limit(500) // Increased limit to ensure we get all children
 
     if (error) {
       console.error('Error fetching children from database:', error)
