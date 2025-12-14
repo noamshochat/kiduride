@@ -52,7 +52,27 @@ export async function GET(request: NextRequest) {
         id: c.id,
         first_name: c.first_name,
         last_name: c.last_name,
+        is_registered_kidu: c.is_registered_kidu,
         is_registered_tennis: c.is_registered_tennis
+      })))
+      
+      // Specifically check for children matching the search term (before activity filter)
+      const matchingChildren = data.filter((c: any) => {
+        const firstName = String(c.first_name || '').trim()
+        const lastName = String(c.last_name || '').trim()
+        const fullName = `${firstName} ${lastName}`.trim()
+        const search = String(searchTerm).trim()
+        // Use indexOf for Hebrew text matching (same as in filter)
+        return firstName.indexOf(search) !== -1 || 
+               lastName.indexOf(search) !== -1 || 
+               fullName.indexOf(search) !== -1
+      })
+      console.log(`Children matching "${searchTerm}" (before activity filter):`, matchingChildren.map((c: any) => ({
+        first_name: c.first_name,
+        last_name: c.last_name,
+        is_registered_kidu: c.is_registered_kidu,
+        is_registered_tennis: c.is_registered_tennis,
+        is_registered_tennis_type: typeof c.is_registered_tennis
       })))
     } else {
       console.log('WARNING: No children found in database!')
@@ -90,10 +110,13 @@ export async function GET(request: NextRequest) {
           return false
         }
       } else if (activity === 'tennis') {
-        const isRegistered = child.is_registered_tennis === true
+        // Check both boolean true and string "true" for compatibility
+        const isRegistered = child.is_registered_tennis === true || child.is_registered_tennis === 'true' || child.is_registered_tennis === 1
         if (!isRegistered) {
-          console.log(`Child ${child.first_name || child.id} filtered out: not registered for tennis (is_registered_tennis: ${child.is_registered_tennis})`)
+          console.log(`Child ${child.first_name || child.id} filtered out: not registered for tennis (is_registered_tennis: ${child.is_registered_tennis}, type: ${typeof child.is_registered_tennis})`)
           return false
+        } else {
+          console.log(`Child ${child.first_name || child.id} PASSED tennis filter (is_registered_tennis: ${child.is_registered_tennis}, type: ${typeof child.is_registered_tennis})`)
         }
       }
       // If activity is null/undefined, don't filter by activity - show all children
