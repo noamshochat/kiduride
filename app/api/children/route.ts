@@ -41,22 +41,28 @@ export async function POST(request: NextRequest) {
     const childId = `child_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`
 
     // Create child
+    const childData = {
+      id: childId,
+      first_name: firstName.trim(),
+      last_name: lastName?.trim() || null,
+      is_registered_kidu: isRegisteredKidu === true,
+      is_registered_tennis: isRegisteredTennis === true,
+    }
+    
+    console.log('Creating child with data:', JSON.stringify(childData, null, 2))
+    
     const { data: child, error: childError } = await supabase
       .from('children')
-      .insert({
-        id: childId,
-        first_name: firstName.trim(),
-        last_name: lastName?.trim() || null,
-        is_registered_kidu: isRegisteredKidu === true,
-        is_registered_tennis: isRegisteredTennis === true,
-      })
+      .insert(childData)
       .select()
       .single()
 
     if (childError) {
       console.error('Error creating child:', childError)
-      return NextResponse.json({ error: 'Failed to create child' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to create child', details: childError.message }, { status: 500 })
     }
+    
+    console.log('Child created successfully:', JSON.stringify(child, null, 2))
 
     // Link parents (create junction table entries)
     const childParentLinks = parentIds.map((parentId: string) => ({

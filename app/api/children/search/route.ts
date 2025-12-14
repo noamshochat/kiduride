@@ -82,20 +82,21 @@ export async function GET(request: NextRequest) {
       // Filter by activity registration if activity is specified
       // Handle case where columns might not exist yet (migration not run) or are NULL
       // NULL/undefined should be treated as false (not registered)
+      // If activity is null/undefined, don't filter by activity
       if (activity === 'kidu') {
         const isRegistered = child.is_registered_kidu === true
         if (!isRegistered) {
           console.log(`Child ${child.first_name || child.id} filtered out: not registered for kidu (is_registered_kidu: ${child.is_registered_kidu})`)
           return false
         }
-      }
-      if (activity === 'tennis') {
+      } else if (activity === 'tennis') {
         const isRegistered = child.is_registered_tennis === true
         if (!isRegistered) {
           console.log(`Child ${child.first_name || child.id} filtered out: not registered for tennis (is_registered_tennis: ${child.is_registered_tennis})`)
           return false
         }
       }
+      // If activity is null/undefined, don't filter by activity - show all children
       
       // Ensure we're working with strings and trim whitespace
       const firstName = String(child.first_name || '').trim()
