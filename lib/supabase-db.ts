@@ -535,17 +535,26 @@ export const supabaseDb = {
       // Add cache-busting timestamp and no-cache headers to ensure fresh results
       const timestamp = Date.now()
       const activityParam = activity ? `&activity=${encodeURIComponent(activity)}` : ''
-      const response = await fetch(`/api/children/search?query=${encodeURIComponent(query)}${activityParam}&_t=${timestamp}`, {
+      const url = `/api/children/search?query=${encodeURIComponent(query)}${activityParam}&_t=${timestamp}`
+      console.log('Fetching from:', url)
+      
+      const response = await fetch(url, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
         },
       })
+      
       if (!response.ok) {
-        throw new Error('Failed to search children')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Search API error:', response.status, errorData)
+        throw new Error(errorData.error || 'Failed to search children')
       }
-      return await response.json()
+      
+      const data = await response.json()
+      console.log('Search API response:', data)
+      return data
     } catch (error) {
       console.error('Error searching children:', error)
       throw error

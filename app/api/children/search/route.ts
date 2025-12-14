@@ -19,6 +19,9 @@ export async function GET(request: NextRequest) {
     }
 
     const searchTerm = query.trim()
+    console.log('=== CHILDREN SEARCH API ===')
+    console.log('Query:', searchTerm)
+    console.log('Activity filter:', activity)
 
     // Fetch all children WITHOUT ORDER BY to avoid Hebrew text collation issues
     // We'll sort in JavaScript instead, which handles Hebrew text more reliably
@@ -28,8 +31,13 @@ export async function GET(request: NextRequest) {
       .limit(200) // Fetch more records to filter client-side
 
     if (error) {
-      console.error('Error searching children:', error)
-      return NextResponse.json({ error: 'Failed to search children' }, { status: 500 })
+      console.error('Error fetching children from database:', error)
+      return NextResponse.json({ error: 'Failed to search children', details: error.message }, { status: 500 })
+    }
+
+    console.log(`Fetched ${data?.length || 0} children from database`)
+    if (data && data.length > 0) {
+      console.log('Sample child:', JSON.stringify(data[0]))
     }
 
     // Sort in JavaScript to avoid database collation issues with Hebrew text
@@ -54,11 +62,20 @@ export async function GET(request: NextRequest) {
     // Note: For Hebrew text, case doesn't exist, so direct string matching is fine
     const filteredData = childrenData.filter((child: any) => {
       // Filter by activity registration if activity is specified
-      if (activity === 'kidu' && !child.is_registered_kidu) {
-        return false
+      // Handle case where columns might not exist yet (migration not run)
+      if (activity === 'kidu') {
+        const isRegistered = child.is_registered_kidu === true
+        if (!isRegistered) {
+          console.log(`Child ${child.first_name} filtered out: not registered for kidu (is_registered_kidu: ${child.is_registered_kidu})`)
+          return false
+        }
       }
-      if (activity === 'tennis' && !child.is_registered_tennis) {
-        return false
+      if (activity === 'tennis') {
+        const isRegistered = child.is_registered_tennis === true
+        if (!isRegistered) {
+          console.log(`Child ${child.first_name} filtered out: not registered for tennis (is_registered_tennis: ${child.is_registered_tennis})`)
+          return false
+        }
       }
       
       // Ensure we're working with strings and trim whitespace
@@ -70,12 +87,16 @@ export async function GET(request: NextRequest) {
       // Direct string matching (Hebrew doesn't have case)
       // Check if search term appears in first name, last name, or full name
       // Use indexOf for more reliable matching than includes
-      return (
+      const matches = (
         firstName.indexOf(search) !== -1 ||
         lastName.indexOf(search) !== -1 ||
         fullName.indexOf(search) !== -1
       )
+      
+      return matches
     }).slice(0, 50) // Limit to 50 results after filtering
+
+    console.log(`After filtering: ${filteredData.length} children match query "${searchTerm}"${activity ? ` and activity "${activity}"` : ''}`)
 
     // Transform to match our interface
     const children = filteredData.map((child: any) => ({
