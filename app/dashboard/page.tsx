@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { format } from 'date-fns'
-import { Calendar, Users, MapPin, Phone, Clock, FileText, ArrowRight, ArrowLeft, Home } from 'lucide-react'
+import { Calendar, Users, MapPin, Phone, Clock, FileText, ArrowRight, ArrowLeft, Home, Printer } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { useActivity } from '@/components/activity-provider'
 import { getDirectionLabel, getCurrentWeekDates } from '@/lib/utils'
@@ -155,7 +155,7 @@ export default function DashboardPage() {
                   onChange={(e) => setEndDate(e.target.value)}
                 />
               </div>
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -163,6 +163,15 @@ export default function DashboardPage() {
                   className="whitespace-nowrap"
                 >
                   Current Week
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push(`/dashboard/print?startDate=${startDate}&endDate=${endDate}`)}
+                  className="whitespace-nowrap flex items-center gap-2"
+                >
+                  <Printer className="h-4 w-4" />
+                  Print View
                 </Button>
               </div>
             </div>
