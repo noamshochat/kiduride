@@ -74,6 +74,25 @@ export async function GET(request: NextRequest) {
         is_registered_tennis: c.is_registered_tennis
       })))
       
+      // Check for אביב גולדברג specifically
+      const avivChildren = data.filter((c: any) => 
+        (c.first_name && c.first_name.includes('אביב')) || 
+        (c.last_name && c.last_name.includes('גולדברג'))
+      )
+      console.log(`Children with "אביב" or "גולדברג" in name:`, avivChildren.map((c: any) => ({
+        first_name: c.first_name,
+        last_name: c.last_name,
+        is_registered_kidu: c.is_registered_kidu,
+        is_registered_tennis: c.is_registered_tennis,
+        id: c.id
+      })))
+      
+      // Log total count and check if we're hitting the limit
+      console.log(`Total children fetched: ${data.length} (limit: 500)`)
+      if (data.length >= 500) {
+        console.warn('⚠️ WARNING: Hit the 500 child limit! Some children may not be included in search results.')
+      }
+      
       // Specifically check for children matching the search term (before activity filter)
       const matchingChildren = data.filter((c: any) => {
         const firstName = String(c.first_name || '').trim()
