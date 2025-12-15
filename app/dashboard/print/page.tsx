@@ -113,7 +113,9 @@ export default function PrintDashboardPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         @media print {
           @page {
             size: A4;
@@ -150,7 +152,9 @@ export default function PrintDashboardPage() {
             background: white;
           }
         }
-      `}} />
+      `,
+        }}
+      />
         {/* Header - Hidden when printing */}
         <div className="no-print bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border-b">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -348,7 +352,6 @@ export default function PrintDashboardPage() {
           )}
         </div>
       </div>
-    </div>
   )
 }
 
