@@ -87,8 +87,21 @@ export async function GET(request: NextRequest) {
         last_name: c.last_name,
         is_registered_kidu: c.is_registered_kidu,
         is_registered_tennis: c.is_registered_tennis,
-        id: c.id
+        id: c.id,
+        created_at: c.created_at
       })))
+      
+      // Check specifically for child_1765799235691_0_wdvvem5gh (אביב גולדברג)
+      const specificChild = data.find((c: any) => c.id === 'child_1765799235691_0_wdvvem5gh')
+      if (specificChild) {
+        console.log('✓ Found אביב גולדברג in fetched data:', JSON.stringify(specificChild, null, 2))
+      } else {
+        console.log('✗ אביב גולדברג (child_1765799235691_0_wdvvem5gh) NOT found in fetched data!')
+        console.log('This suggests the child is not being fetched from Supabase, possibly due to:')
+        console.log('  - Database replication lag')
+        console.log('  - RLS policy issue')
+        console.log('  - Query ordering/filtering issue')
+      }
       
       // Log total count and check if we're hitting the limit
       console.log(`Total children fetched: ${data.length} (limit: 500)`)
