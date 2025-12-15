@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/components/auth-provider'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { Ride, User } from '@/lib/demo-data'
 import { supabaseDb } from '@/lib/supabase-db'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { Printer, ArrowLeft, ArrowRight, Users, MapPin, Phone, Clock, Home } fro
 import { useActivity } from '@/components/activity-provider'
 import { getDirectionLabel, getCurrentWeekDates } from '@/lib/utils'
 
-export default function PrintDashboardPage() {
+function PrintDashboardContent() {
   const { user } = useAuth()
   const { activity } = useActivity()
   const router = useRouter()
@@ -352,6 +352,18 @@ export default function PrintDashboardPage() {
           )}
         </div>
       </div>
+  )
+}
+
+export default function PrintDashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    }>
+      <PrintDashboardContent />
+    </Suspense>
   )
 }
 
