@@ -26,10 +26,13 @@ export async function GET(request: NextRequest) {
     // Fetch all children WITHOUT ORDER BY to avoid Hebrew text collation issues
     // We'll sort in JavaScript instead, which handles Hebrew text more reliably
     // Explicitly select all columns including activity registration fields
+    // Order by created_at DESC to get newest children first, then by first_name for consistency
     console.log('Fetching children from Supabase...')
     const { data, error } = await supabase
       .from('children')
       .select('id, first_name, last_name, created_at, updated_at, is_registered_kidu, is_registered_tennis')
+      .order('created_at', { ascending: false })
+      .order('first_name', { ascending: true })
       .limit(500) // Increased limit to ensure we get all children
 
     if (error) {
