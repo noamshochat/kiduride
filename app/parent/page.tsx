@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { format } from 'date-fns'
-import { Calendar, Users, MapPin, CheckCircle2, XCircle, Plus, X, Home, Phone } from 'lucide-react'
+import { Calendar, Users, MapPin, CheckCircle2, XCircle, Plus, X, Home, Phone, LayoutDashboard } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { useActivity } from '@/components/activity-provider'
 
@@ -337,12 +337,22 @@ export default function ParentPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="max-w-xs"
-            />
+            <div className="flex items-center gap-4 justify-between">
+              <Input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="max-w-xs"
+              />
+              <Button
+                variant="outline"
+                onClick={() => router.push('/dashboard')}
+                className="flex items-center gap-2"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                Weekly Summary
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

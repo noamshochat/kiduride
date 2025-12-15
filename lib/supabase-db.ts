@@ -171,6 +171,11 @@ export const supabaseDb = {
     return allRides.filter(ride => ride.date === date)
   },
 
+  async getRidesByDateRange(startDate: string, endDate: string): Promise<Ride[]> {
+    const allRides = await this.getRides()
+    return allRides.filter(ride => ride.date >= startDate && ride.date <= endDate)
+  },
+
   async getRideById(id: string): Promise<Ride | undefined> {
     const { data: ride, error: rideError } = await supabase
       .from('rides')
