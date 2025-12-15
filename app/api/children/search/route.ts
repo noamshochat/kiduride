@@ -19,116 +19,20 @@ export async function GET(request: NextRequest) {
     }
 
     const searchTerm = query.trim()
-    console.log('=== CHILDREN SEARCH API ===')
-    console.log('Query:', searchTerm)
-    console.log('Activity filter:', activity)
 
-    // Fetch all children WITHOUT ORDER BY to avoid Hebrew text collation issues
-    // We'll sort in JavaScript instead, which handles Hebrew text more reliably
-    // Explicitly select all columns including activity registration fields
+    // Fetch all children with activity registration fields
     // Order by created_at DESC to get newest children first, then by first_name for consistency
-    console.log('Fetching children from Supabase...')
+    // This ensures newly created children are always included in search results
     const { data, error } = await supabase
       .from('children')
       .select('id, first_name, last_name, created_at, updated_at, is_registered_kidu, is_registered_tennis')
       .order('created_at', { ascending: false })
       .order('first_name', { ascending: true })
-      .limit(500) // Increased limit to ensure we get all children
+      .limit(500) // Limit to 500 to ensure reasonable performance
 
     if (error) {
       console.error('Error fetching children from database:', error)
       return NextResponse.json({ error: 'Failed to search children', details: error.message }, { status: 500 })
-    }
-    
-    console.log('Raw data from Supabase:', JSON.stringify(data?.slice(0, 3), null, 2)) // Log first 3 for debugging
-
-    console.log(`Fetched ${data?.length || 0} children from database`)
-    if (data && data.length > 0) {
-      console.log('Sample child (full object):', JSON.stringify(data[0], null, 2))
-      console.log('Sample child first_name:', data[0].first_name)
-      console.log('Sample child last_name:', data[0].last_name)
-      console.log('Sample child is_registered_tennis:', data[0].is_registered_tennis)
-      
-      // Check if first_name/last_name columns exist
-      const sampleKeys = Object.keys(data[0])
-      console.log('Available columns in child object:', sampleKeys)
-      
-      // Log all children names for debugging
-      const allChildrenNames = data.map((c: any) => ({
-        id: c.id,
-        first_name: c.first_name,
-        last_name: c.last_name,
-        is_registered_kidu: c.is_registered_kidu,
-        is_registered_tennis: c.is_registered_tennis
-      }))
-      console.log('All children names:', allChildrenNames)
-      
-      // Specifically check if גיא and עמית are in the fetched data
-      const guyChildren = data.filter((c: any) => c.first_name && c.first_name.includes('גיא'))
-      const amitChildren = data.filter((c: any) => c.first_name && c.first_name.includes('עמית'))
-      console.log(`Children with "גיא" in name:`, guyChildren.map((c: any) => ({
-        first_name: c.first_name,
-        last_name: c.last_name,
-        is_registered_tennis: c.is_registered_tennis
-      })))
-      console.log(`Children with "עמית" in name:`, amitChildren.map((c: any) => ({
-        first_name: c.first_name,
-        last_name: c.last_name,
-        is_registered_tennis: c.is_registered_tennis
-      })))
-      
-      // Check for אביב גולדברג specifically
-      const avivChildren = data.filter((c: any) => 
-        (c.first_name && c.first_name.includes('אביב')) || 
-        (c.last_name && c.last_name.includes('גולדברג'))
-      )
-      console.log(`Children with "אביב" or "גולדברג" in name:`, avivChildren.map((c: any) => ({
-        first_name: c.first_name,
-        last_name: c.last_name,
-        is_registered_kidu: c.is_registered_kidu,
-        is_registered_tennis: c.is_registered_tennis,
-        id: c.id,
-        created_at: c.created_at
-      })))
-      
-      // Check specifically for child_1765799235691_0_wdvvem5gh (אביב גולדברג)
-      const specificChild = data.find((c: any) => c.id === 'child_1765799235691_0_wdvvem5gh')
-      if (specificChild) {
-        console.log('✓ Found אביב גולדברג in fetched data:', JSON.stringify(specificChild, null, 2))
-      } else {
-        console.log('✗ אביב גולדברג (child_1765799235691_0_wdvvem5gh) NOT found in fetched data!')
-        console.log('This suggests the child is not being fetched from Supabase, possibly due to:')
-        console.log('  - Database replication lag')
-        console.log('  - RLS policy issue')
-        console.log('  - Query ordering/filtering issue')
-      }
-      
-      // Log total count and check if we're hitting the limit
-      console.log(`Total children fetched: ${data.length} (limit: 500)`)
-      if (data.length >= 500) {
-        console.warn('⚠️ WARNING: Hit the 500 child limit! Some children may not be included in search results.')
-      }
-      
-      // Specifically check for children matching the search term (before activity filter)
-      const matchingChildren = data.filter((c: any) => {
-        const firstName = String(c.first_name || '').trim()
-        const lastName = String(c.last_name || '').trim()
-        const fullName = `${firstName} ${lastName}`.trim()
-        const search = String(searchTerm).trim()
-        // Use indexOf for Hebrew text matching (same as in filter)
-        return firstName.indexOf(search) !== -1 || 
-               lastName.indexOf(search) !== -1 || 
-               fullName.indexOf(search) !== -1
-      })
-      console.log(`Children matching "${searchTerm}" (before activity filter):`, matchingChildren.map((c: any) => ({
-        first_name: c.first_name,
-        last_name: c.last_name,
-        is_registered_kidu: c.is_registered_kidu,
-        is_registered_tennis: c.is_registered_tennis,
-        is_registered_tennis_type: typeof c.is_registered_tennis
-      })))
-    } else {
-      console.log('WARNING: No children found in database!')
     }
 
     // Sort in JavaScript to avoid database collation issues with Hebrew text
@@ -151,33 +55,21 @@ export async function GET(request: NextRequest) {
     // Also filter by activity registration if activity is specified
     // This ensures reliable matching for Hebrew text regardless of database collation
     // Note: For Hebrew text, case doesn't exist, so direct string matching is fine
-    console.log(`Starting filter process for ${childrenData.length} children, activity: ${activity}, search: "${searchTerm}"`)
-    
     const filteredData = childrenData.filter((child: any) => {
-      const childFirstName = child.first_name || ''
-      const childLastName = child.last_name || ''
-      
       // Filter by activity registration if activity is specified
-      // Handle case where columns might not exist yet (migration not run) or are NULL
       // NULL/undefined should be treated as false (not registered)
-      // If activity is null/undefined, don't filter by activity
+      // If activity is null/undefined, don't filter by activity - show all children
       if (activity === 'kidu') {
         const isRegistered = child.is_registered_kidu === true
         if (!isRegistered) {
-          console.log(`[FILTER] Child "${childFirstName}" filtered out: not registered for kidu (is_registered_kidu: ${child.is_registered_kidu})`)
           return false
         }
       } else if (activity === 'tennis') {
-        // Check both boolean true and string "true" for compatibility
-        const isRegistered = child.is_registered_tennis === true || child.is_registered_tennis === 'true' || child.is_registered_tennis === 1
+        const isRegistered = child.is_registered_tennis === true
         if (!isRegistered) {
-          console.log(`[FILTER] Child "${childFirstName}" "${childLastName}" filtered out: not registered for tennis (is_registered_tennis: ${JSON.stringify(child.is_registered_tennis)}, type: ${typeof child.is_registered_tennis})`)
           return false
-        } else {
-          console.log(`[FILTER] Child "${childFirstName}" "${childLastName}" PASSED tennis filter (is_registered_tennis: ${JSON.stringify(child.is_registered_tennis)}, type: ${typeof child.is_registered_tennis})`)
         }
       }
-      // If activity is null/undefined, don't filter by activity - show all children
       
       // Ensure we're working with strings and trim whitespace
       const firstName = String(child.first_name || '').trim()
@@ -187,60 +79,27 @@ export async function GET(request: NextRequest) {
       
       // Skip children without names
       if (!firstName && !lastName) {
-        console.log(`Skipping child ${child.id}: no first_name or last_name`)
         return false
       }
       
       // Direct string matching (Hebrew doesn't have case)
       // Check if search term appears in first name, last name, or full name
-      // Use indexOf for more reliable matching than includes
-      const firstNameMatch = firstName.indexOf(search) !== -1
-      const lastNameMatch = lastName.indexOf(search) !== -1
-      const fullNameMatch = fullName.indexOf(search) !== -1
-      const matches = firstNameMatch || lastNameMatch || fullNameMatch
-      
-      // Log ALL children being checked (for debugging)
-      if (activity === 'tennis') {
-        console.log(`Checking child: "${firstName}" "${lastName}" - search: "${search}" - firstNameMatch: ${firstNameMatch}, lastNameMatch: ${lastNameMatch}, fullNameMatch: ${fullNameMatch}, matches: ${matches}`)
-        
-        // Log detailed matching info for specific children
-        if (firstName.includes('גיא') || firstName.includes('עמית') || search.includes('גיא') || search.includes('עמית')) {
-          console.log(`  >>> DETAILED DEBUG for "${firstName}":`)
-          console.log(`  Search term: "${search}" (length: ${search.length})`)
-          console.log(`  FirstName: "${firstName}" (length: ${firstName.length})`)
-          console.log(`  Search char codes:`, Array.from(search).map(c => `${c}(${c.charCodeAt(0)})`))
-          console.log(`  FirstName char codes:`, Array.from(firstName).map(c => `${c}(${c.charCodeAt(0)})`))
-          console.log(`  indexOf result: ${firstName.indexOf(search)}`)
-        }
-      }
-      
-      if (matches) {
-        console.log(`✓ Match found: ${firstName} ${lastName} (id: ${child.id}) - firstNameMatch: ${firstNameMatch}, lastNameMatch: ${lastNameMatch}, fullNameMatch: ${fullNameMatch}`)
-      }
-      
-      return matches
+      // Use indexOf for reliable matching
+      return (
+        firstName.indexOf(search) !== -1 ||
+        lastName.indexOf(search) !== -1 ||
+        fullName.indexOf(search) !== -1
+      )
     }).slice(0, 50) // Limit to 50 results after filtering
 
-    console.log(`After filtering: ${filteredData.length} children match query "${searchTerm}"${activity ? ` and activity "${activity}"` : ''}`)
-
     // Transform to match our interface
-    const children = filteredData.map((child: any) => {
-      // Handle case where first_name/last_name might be null or missing
-      const firstName = child.first_name || ''
-      const lastName = child.last_name || undefined
-      
-      if (!firstName && !lastName) {
-        console.warn(`Child ${child.id} has no first_name or last_name`)
-      }
-      
-      return {
-        id: child.id,
-        firstName: firstName,
-        lastName: lastName,
-        is_registered_kidu: child.is_registered_kidu || false,
-        is_registered_tennis: child.is_registered_tennis || false,
-      }
-    })
+    const children = filteredData.map((child: any) => ({
+      id: child.id,
+      firstName: child.first_name || '',
+      lastName: child.last_name || undefined,
+      is_registered_kidu: child.is_registered_kidu || false,
+      is_registered_tennis: child.is_registered_tennis || false,
+    }))
 
     // Prevent caching to ensure fresh results
     return NextResponse.json(children, {
