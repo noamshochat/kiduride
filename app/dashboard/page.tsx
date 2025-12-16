@@ -72,10 +72,19 @@ export default function DashboardPage() {
         filtered = allRides.filter(ride => ride.direction === 'to-school' || ride.direction === 'from-school' || ride.direction === 'to-train-station')
       }
       
-      // Sort by date, then by direction
+      // Sort by date, then by direction (Tennis: to-tennis-center before back-home)
       filtered.sort((a, b) => {
         if (a.date !== b.date) {
           return a.date.localeCompare(b.date)
+        }
+        // For tennis activity, prioritize to-tennis-center over back-home
+        if (activity === 'tennis') {
+          if (a.direction === 'to-tennis-center' && b.direction === 'back-home') {
+            return -1
+          }
+          if (a.direction === 'back-home' && b.direction === 'to-tennis-center') {
+            return 1
+          }
         }
         return a.direction.localeCompare(b.direction)
       })
