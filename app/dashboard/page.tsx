@@ -13,17 +13,17 @@ import { format } from 'date-fns'
 import { Calendar, Users, MapPin, Phone, Clock, FileText, ArrowRight, ArrowLeft, Home, Printer } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { useActivity } from '@/components/activity-provider'
-import { getDirectionLabel, getCurrentWeekDates } from '@/lib/utils'
+import { getDirectionLabel, getCurrentMonthDates } from '@/lib/utils'
 
 export default function DashboardPage() {
   const { user, logout } = useAuth()
   const { activity } = useActivity()
   const router = useRouter()
   
-  // Get current week dates (Sunday to Friday)
-  const currentWeek = getCurrentWeekDates()
-  const [startDate, setStartDate] = useState(currentWeek.startDate)
-  const [endDate, setEndDate] = useState(currentWeek.endDate)
+  // Get current calendar month dates (first day to last day)
+  const currentMonth = getCurrentMonthDates()
+  const [startDate, setStartDate] = useState(currentMonth.startDate)
+  const [endDate, setEndDate] = useState(currentMonth.endDate)
   const [rides, setRides] = useState<Ride[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [usersMap, setUsersMap] = useState<Record<string, User>>({})
@@ -97,10 +97,10 @@ export default function DashboardPage() {
     }
   }
 
-  const handleSetCurrentWeek = () => {
-    const week = getCurrentWeekDates()
-    setStartDate(week.startDate)
-    setEndDate(week.endDate)
+  const handleSetCurrentMonth = () => {
+    const month = getCurrentMonthDates()
+    setStartDate(month.startDate)
+    setEndDate(month.endDate)
   }
 
   if (!user) {
@@ -141,13 +141,13 @@ export default function DashboardPage() {
               Date Range
             </CardTitle>
             <CardDescription>
-              Select a date range to view rides (default: current week Sunday to Friday)
+              Select a date range to view rides (default: current calendar month)
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 space-y-2">
-                <Label htmlFor="startDate">Start Date (Sunday)</Label>
+                <Label htmlFor="startDate">Start Date</Label>
                 <Input
                   id="startDate"
                   type="date"
@@ -156,7 +156,7 @@ export default function DashboardPage() {
                 />
               </div>
               <div className="flex-1 space-y-2">
-                <Label htmlFor="endDate">End Date (Friday)</Label>
+                <Label htmlFor="endDate">End Date</Label>
                 <Input
                   id="endDate"
                   type="date"
@@ -168,10 +168,10 @@ export default function DashboardPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleSetCurrentWeek}
+                  onClick={handleSetCurrentMonth}
                   className="whitespace-nowrap"
                 >
-                  Current Week
+                  Current Month
                 </Button>
                 <Button
                   type="button"

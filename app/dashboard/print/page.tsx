@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { format, parseISO } from 'date-fns'
 import { Printer, ArrowLeft, ArrowRight, Users, MapPin, Phone, Clock, Home } from 'lucide-react'
 import { useActivity } from '@/components/activity-provider'
-import { getDirectionLabel, getCurrentWeekDates } from '@/lib/utils'
+import { getDirectionLabel, getCurrentMonthDates } from '@/lib/utils'
 
 function PrintDashboardContent() {
   const { user } = useAuth()
@@ -17,10 +17,10 @@ function PrintDashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
-  // Get date range from query params or use current week
-  const currentWeek = getCurrentWeekDates()
-  const startDateParam = searchParams.get('startDate') || currentWeek.startDate
-  const endDateParam = searchParams.get('endDate') || currentWeek.endDate
+  // Get date range from query params or use current calendar month
+  const currentMonth = getCurrentMonthDates()
+  const startDateParam = searchParams.get('startDate') || currentMonth.startDate
+  const endDateParam = searchParams.get('endDate') || currentMonth.endDate
   
   const [startDate] = useState(startDateParam)
   const [endDate] = useState(endDateParam)
@@ -189,7 +189,7 @@ function PrintDashboardContent() {
           {/* Title */}
           <div className="mb-6 text-center">
             <h1 className={`text-3xl font-bold ${activity === 'tennis' ? 'text-green-600' : 'text-primary'}`}>
-              {activity === 'tennis' ? 'TennisRide' : 'KiduRide'} - Weekly Summary
+              {activity === 'tennis' ? 'TennisRide' : 'KiduRide'} - Monthly Summary
             </h1>
             <p className="text-muted-foreground mt-2">
               {format(parseISO(startDate), 'MMM d')} - {format(parseISO(endDate), 'MMM d, yyyy')}

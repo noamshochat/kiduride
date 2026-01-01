@@ -48,3 +48,24 @@ export function getCurrentWeekDates(): { startDate: string; endDate: string } {
   }
 }
 
+/**
+ * Get current calendar month dates (first day to last day of month)
+ * Returns { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD' }
+ */
+export function getCurrentMonthDates(): { startDate: string; endDate: string } {
+  const today = new Date()
+  
+  // First day of the month
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+  firstDay.setHours(0, 0, 0, 0)
+  
+  // Last day of the month
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+  lastDay.setHours(23, 59, 59, 999)
+  
+  return {
+    startDate: firstDay.toISOString().split('T')[0],
+    endDate: lastDay.toISOString().split('T')[0],
+  }
+}
+

@@ -43,6 +43,28 @@ export default function ParentPage() {
     pickupFromHome: false,
     pickupAddress: ''
   })
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [isLoadingAdmin, setIsLoadingAdmin] = useState(true)
+
+  // Check admin status on mount
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        setIsLoadingAdmin(false)
+        return
+      }
+      try {
+        const adminStatus = await supabaseDb.checkIsAdmin(user.id)
+        setIsAdmin(adminStatus)
+      } catch (error) {
+        console.error('Error checking admin status:', error)
+        setIsAdmin(false)
+      } finally {
+        setIsLoadingAdmin(false)
+      }
+    }
+    checkAdmin()
+  }, [user])
 
   // Load users map on mount
   useEffect(() => {
@@ -228,17 +250,23 @@ export default function ParentPage() {
   const handleRemoveChild = async (rideId: string, passengerId: string) => {
     if (!user) return
 
-    // Check if this passenger belongs to the current user
     const ride = await supabaseDb.getRideById(rideId)
     if (!ride) return
 
     const passenger = ride.passengers.find(p => p.id === passengerId)
-    if (!passenger || passenger.parentId !== user.id) {
+    if (!passenger) return
+
+    // Check if this passenger belongs to the current user (unless admin)
+    if (!isAdmin && passenger.parentId !== user.id) {
       alert('You can only remove your own children from rides')
       return
     }
 
-    if (confirm('Are you sure you want to remove this child from the ride?')) {
+    const confirmMessage = isAdmin && passenger.parentId !== user.id
+      ? `Are you sure you want to remove ${passenger.childName} from this ride? (Admin: removing another parent's child)`
+      : 'Are you sure you want to remove this child from the ride?'
+
+    if (confirm(confirmMessage)) {
       try {
         const success = await supabaseDb.removePassenger(rideId, passengerId)
         if (success) {
@@ -275,8 +303,8 @@ export default function ParentPage() {
   const handleUpdatePassenger = async () => {
     if (!selectedPassenger || !user) return
 
-    // Check if this passenger belongs to the current user
-    if (selectedPassenger.passenger.parentId !== user.id) {
+    // Check if this passenger belongs to the current user (unless admin)
+    if (!isAdmin && selectedPassenger.passenger.parentId !== user.id) {
       alert('You can only update your own children\'s assignments')
       return
     }
@@ -325,8 +353,19 @@ export default function ParentPage() {
       <Navigation />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-primary">Parent Dashboard</h1>
-          <p className="text-muted-foreground">Find and manage rides for your children</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className={`text-3xl font-bold ${activity === 'tennis' ? 'text-green-600' : 'text-primary'}`}>
+              {activity === 'tennis' ? 'TennisRide' : 'KiduRide'} Parent Dashboard
+            </h1>
+            {isAdmin && (
+              <span className="px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-800 rounded-md">
+                ADMIN MODE
+              </span>
+            )}
+          </div>
+          <p className="text-muted-foreground">
+            {isAdmin ? 'Viewing all assigned children (Admin: can remove any child)' : 'Find and manage rides for your children'}
+          </p>
         </div>
 
         <Card className="mb-6">
@@ -350,7 +389,7 @@ export default function ParentPage() {
                 className="flex items-center gap-2"
               >
                 <LayoutDashboard className="h-4 w-4" />
-                Weekly Summary
+                Monthly Summary
               </Button>
             </div>
           </CardContent>
@@ -366,6 +405,8 @@ export default function ParentPage() {
           ) : (
             rides.map((ride) => {
               const userPassengers = ride.passengers.filter(p => p.parentId === user.id)
+              // If admin, show all passengers; otherwise show only user's passengers
+              const displayedPassengers = isAdmin ? ride.passengers : userPassengers
               const isFull = ride.availableSeats <= 0
               const hasUserChild = userPassengers.length > 0
               const driver = usersMap[ride.driverId]
@@ -415,41 +456,58 @@ export default function ParentPage() {
                         <p className="text-muted-foreground">{ride.notes}</p>
                       </div>
                     )}
-                    {hasUserChild && (
+                    {displayedPassengers.length > 0 && (
                       <div className="text-sm pt-2 border-t">
-                        <p className="font-medium mb-2">Your Children:</p>
+                        <p className="font-medium mb-2">
+                          {isAdmin ? 'All Assigned Children:' : 'Your Children:'}
+                        </p>
                         <ul className="space-y-2">
-                          {userPassengers.map((passenger) => (
-                            <li key={passenger.id} className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <span className="text-muted-foreground font-medium">{passenger.childName}</span>
-                                {passenger.pickupFromHome && passenger.pickupAddress && (
-                                  <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                    <Home className="h-3 w-3" />
-                                    <span>{passenger.pickupAddress}</span>
+                          {displayedPassengers.map((passenger) => {
+                            const isOwnChild = passenger.parentId === user.id
+                            const parent = usersMap[passenger.parentId]
+                            return (
+                              <li key={passenger.id} className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground font-medium">{passenger.childName}</span>
+                                    {isAdmin && !isOwnChild && parent && (
+                                      <span className="text-xs text-muted-foreground">
+                                        ({parent.name})
+                                      </span>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openUpdateDialog(ride.id, passenger)}
-                                  className="h-6 px-2"
-                                >
-                                  Update
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleRemoveChild(ride.id, passenger.id)}
-                                  className="text-destructive h-6 px-2"
-                                >
-                                  Remove
-                                </Button>
-                              </div>
-                            </li>
-                          ))}
+                                  {passenger.pickupFromHome && passenger.pickupAddress && (
+                                    <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                                      <Home className="h-3 w-3" />
+                                      <span>{passenger.pickupAddress}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex gap-1">
+                                  {(isAdmin || isOwnChild) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openUpdateDialog(ride.id, passenger)}
+                                      className="h-6 px-2"
+                                    >
+                                      Update
+                                    </Button>
+                                  )}
+                                  {(isAdmin || isOwnChild) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleRemoveChild(ride.id, passenger.id)}
+                                      className="text-destructive h-6 px-2"
+                                    >
+                                      Remove
+                                    </Button>
+                                  )}
+                                </div>
+                              </li>
+                            )
+                          })}
                         </ul>
                       </div>
                     )}
