@@ -21,14 +21,12 @@ export async function GET(request: NextRequest) {
     const searchTerm = query.trim()
 
     // Fetch all children with activity registration fields
-    // Order by created_at DESC to get newest children first, then by first_name for consistency
+    // Don't order in database - sort in JavaScript to avoid any potential issues
     // This ensures newly created children are always included in search results
     const { data, error } = await supabase
       .from('children')
       .select('id, first_name, last_name, created_at, updated_at, is_registered_kidu, is_registered_tennis')
-      .order('created_at', { ascending: false })
-      .order('first_name', { ascending: true })
-      .limit(500) // Limit to 500 to ensure reasonable performance
+      // No limit - fetch all children to ensure nothing is excluded
 
     if (error) {
       console.error('Error fetching children from database:', error)
@@ -37,7 +35,16 @@ export async function GET(request: NextRequest) {
 
     // Sort in JavaScript to avoid database collation issues with Hebrew text
     // Using localeCompare with Hebrew locale ensures proper sorting
+    // Sort by created_at DESC first (newest first), then by name
     const childrenData = (data || []).sort((a: any, b: any) => {
+      // First, sort by created_at (newest first)
+      const aCreated = new Date(a.created_at || 0).getTime()
+      const bCreated = new Date(b.created_at || 0).getTime()
+      if (aCreated !== bCreated) {
+        return bCreated - aCreated // DESC order
+      }
+      
+      // Then sort by name
       const aFirstName = (a.first_name || '').trim()
       const bFirstName = (b.first_name || '').trim()
       const aLastName = (a.last_name || '').trim()
