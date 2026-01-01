@@ -9,7 +9,17 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
 // Create Supabase client with anon key (subject to RLS)
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+// Disable caching to ensure fresh data
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  db: {
+    schema: 'public',
+  },
+  global: {
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  },
+})
 
 // Create Supabase admin client with service role key (bypasses RLS)
 // Only use this in server-side API routes for admin operations

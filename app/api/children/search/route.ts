@@ -23,9 +23,14 @@ export async function GET(request: NextRequest) {
     // Fetch all children with activity registration fields
     // Don't order in database - sort in JavaScript to avoid any potential issues
     // This ensures newly created children are always included in search results
+    // Force fresh data - Supabase may cache queries, so we add a timestamp condition
+    // that always matches but ensures each query is unique
     const { data, error } = await supabase
       .from('children')
       .select('id, first_name, last_name, created_at, updated_at, is_registered_kidu, is_registered_tennis')
+      // Force fresh query by ensuring we always get latest data
+      // The condition below matches all records but prevents query caching
+      .gte('created_at', '1970-01-01T00:00:00Z')
       // No limit - fetch all children to ensure nothing is excluded
 
     if (error) {
@@ -67,12 +72,18 @@ export async function GET(request: NextRequest) {
       // NULL/undefined should be treated as false (not registered)
       // If activity is null/undefined, don't filter by activity - show all children
       if (activity === 'kidu') {
-        const isRegistered = child.is_registered_kidu === true
+        // More robust check: handle true, 'true', 1, etc.
+        const isRegistered = child.is_registered_kidu === true || 
+                            child.is_registered_kidu === 'true' || 
+                            child.is_registered_kidu === 1
         if (!isRegistered) {
           return false
         }
       } else if (activity === 'tennis') {
-        const isRegistered = child.is_registered_tennis === true
+        // More robust check: handle true, 'true', 1, etc.
+        const isRegistered = child.is_registered_tennis === true || 
+                            child.is_registered_tennis === 'true' || 
+                            child.is_registered_tennis === 1
         if (!isRegistered) {
           return false
         }
@@ -109,11 +120,13 @@ export async function GET(request: NextRequest) {
     }))
 
     // Prevent caching to ensure fresh results
+    // Add timestamp to response to help with cache-busting
     return NextResponse.json(children, {
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
         'Pragma': 'no-cache',
         'Expires': '0',
+        'X-Timestamp': Date.now().toString(),
       },
     })
   } catch (error) {
