@@ -1,8 +1,8 @@
 'use client'
 
 import { useAuth } from '@/components/auth-provider'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
 import { Ride, User, Child, Passenger } from '@/lib/demo-data'
 import { supabaseDb } from '@/lib/supabase-db'
 import { ChildAutocomplete } from '@/components/child-autocomplete'
@@ -25,11 +25,15 @@ interface ChildEntry {
   pickupAddress: string
 }
 
-export default function ParentPage() {
+function ParentPageContent() {
   const { user, logout } = useAuth()
   const { activity } = useActivity()
   const router = useRouter()
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const searchParams = useSearchParams()
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const dateParam = searchParams.get('date')
+    return dateParam || new Date().toISOString().split('T')[0]
+  })
   const [rides, setRides] = useState<Ride[]>([])
   const [isAssignOpen, setIsAssignOpen] = useState(false)
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
@@ -100,6 +104,19 @@ export default function ParentPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, activity])
+
+  // Handle ride ID from query params - auto-select ride when page loads
+  useEffect(() => {
+    const rideId = searchParams.get('rideId')
+    if (rideId && rides.length > 0) {
+      const ride = rides.find(r => r.id === rideId)
+      if (ride) {
+        setSelectedRide(ride)
+        setIsAssignOpen(true)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rides, searchParams])
 
   const loadRides = async () => {
     const dateRides = await supabaseDb.getRidesByDate(selectedDate)
@@ -732,6 +749,18 @@ export default function ParentPage() {
         </Dialog>
       </div>
     </div>
+  )
+}
+
+export default function ParentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    }>
+      <ParentPageContent />
+    </Suspense>
   )
 }
 

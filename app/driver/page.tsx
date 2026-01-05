@@ -1,8 +1,8 @@
 'use client'
 
 import { useAuth } from '@/components/auth-provider'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
 import { Ride, User } from '@/lib/demo-data'
 import { supabaseDb } from '@/lib/supabase-db'
 import { Button } from '@/components/ui/button'
@@ -20,11 +20,15 @@ import { AddToCalendarButton } from '@/components/add-to-calendar-button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useActivity } from '@/components/activity-provider'
 
-export default function DriverPage() {
+function DriverPageContent() {
   const { user, logout } = useAuth()
   const { activity } = useActivity()
   const router = useRouter()
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const searchParams = useSearchParams()
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const dateParam = searchParams.get('date')
+    return dateParam || new Date().toISOString().split('T')[0]
+  })
   const [showAllRides, setShowAllRides] = useState(false) // Admin: show all rides or filter by date
   const [allRides, setAllRides] = useState<Ride[]>([]) // Store all rides
   const [rides, setRides] = useState<Ride[]>([]) // Filtered rides by date
@@ -34,13 +38,24 @@ export default function DriverPage() {
   const [isUpdateOpen, setIsUpdateOpen] = useState(false)
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
   const [usersMap, setUsersMap] = useState<Record<string, User>>({})
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    direction: 'to-school' as 'to-school' | 'from-school' | 'to-train-station' | 'to-tennis-center' | 'back-home',
-    totalSeats: 0,
-    pickupAddress: '',
-    pickupTime: '',
-    notes: '',
+  const [formData, setFormData] = useState(() => {
+    const dateParam = searchParams.get('date')
+    const directionParam = searchParams.get('direction') as 'to-school' | 'from-school' | 'to-train-station' | 'to-tennis-center' | 'back-home' | null
+    
+    // Get default direction based on activity
+    let defaultDirection: 'to-school' | 'from-school' | 'to-train-station' | 'to-tennis-center' | 'back-home' = 'to-school'
+    if (activity === 'tennis') {
+      defaultDirection = 'to-tennis-center'
+    }
+    
+    return {
+      date: dateParam || new Date().toISOString().split('T')[0],
+      direction: directionParam || defaultDirection,
+      totalSeats: 0,
+      pickupAddress: '',
+      pickupTime: '',
+      notes: '',
+    }
   })
 
   // Get valid directions based on activity
@@ -117,6 +132,31 @@ export default function DriverPage() {
       router.push('/')
     }
   }, [user, router])
+
+  // Handle query parameters - open create dialog if date and direction are provided
+  useEffect(() => {
+    const dateParam = searchParams.get('date')
+    const directionParam = searchParams.get('direction')
+    if (dateParam && directionParam && user) {
+      // Get default direction based on activity if not provided
+      let defaultDirection: 'to-school' | 'from-school' | 'to-train-station' | 'to-tennis-center' | 'back-home' = 'to-school'
+      if (activity === 'tennis') {
+        defaultDirection = 'to-tennis-center'
+      }
+      
+      // Update form data with query params
+      setFormData(prev => ({
+        ...prev,
+        date: dateParam,
+        direction: (directionParam as any) || defaultDirection,
+      }))
+      // Set selected date to match
+      setSelectedDate(dateParam)
+      // Open create dialog
+      setIsCreateOpen(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, user, activity])
 
   const checkAdminAndLoadRides = async () => {
     if (!user) return
@@ -727,6 +767,18 @@ export default function DriverPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function DriverPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    }>
+      <DriverPageContent />
+    </Suspense>
   )
 }
 

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { format } from 'date-fns'
-import { Calendar, Users, MapPin, Phone, Clock, FileText, ArrowRight, ArrowLeft, Home, Printer } from 'lucide-react'
+import { Calendar, Users, MapPin, Phone, Clock, FileText, ArrowRight, ArrowLeft, Home, Printer, Table } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { useActivity } from '@/components/activity-provider'
 import { getDirectionLabel, getCurrentMonthDates } from '@/lib/utils'
@@ -172,6 +172,15 @@ export default function DashboardPage() {
                   className="whitespace-nowrap"
                 >
                   Current Month
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push(`/dashboard/calendar?startDate=${startDate}&endDate=${endDate}`)}
+                  className="whitespace-nowrap flex items-center gap-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Calendar View
                 </Button>
                 <Button
                   type="button"
