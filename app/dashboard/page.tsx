@@ -180,7 +180,7 @@ export default function DashboardPage() {
                   className="whitespace-nowrap flex items-center gap-2"
                 >
                   <Calendar className="h-4 w-4" />
-                  Calendar View
+                  Table View
                 </Button>
                 <Button
                   type="button"
