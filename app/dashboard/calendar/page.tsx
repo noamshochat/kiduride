@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { format } from 'date-fns'
-import { Calendar, Train } from 'lucide-react'
+import { Calendar, Train, List } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { useActivity } from '@/components/activity-provider'
 import { getCurrentMonthDates } from '@/lib/utils'
@@ -247,6 +247,15 @@ function CalendarDashboardContent() {
                 />
               </div>
               <div className="flex items-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push(`/dashboard?startDate=${startDate}&endDate=${endDate}`)}
+                  className="whitespace-nowrap flex items-center gap-2"
+                >
+                  <List className="mr-2 h-4 w-4" />
+                  Monthly Summary
+                </Button>
                 <Button
                   type="button"
                   variant="outline"

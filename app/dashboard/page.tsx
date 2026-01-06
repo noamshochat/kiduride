@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from '@/components/auth-provider'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Ride, User } from '@/lib/demo-data'
 import { supabaseDb } from '@/lib/supabase-db'
@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const { user, logout } = useAuth()
   const { activity } = useActivity()
   const router = useRouter()
+  const pathname = usePathname()
   
   // Get current calendar month dates (first day to last day)
   const currentMonth = getCurrentMonthDates()
@@ -27,6 +28,9 @@ export default function DashboardPage() {
   const [rides, setRides] = useState<Ride[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [usersMap, setUsersMap] = useState<Record<string, User>>({})
+  
+  // Determine active view based on current path
+  const activeView = pathname === '/dashboard/calendar' ? 'table' : pathname === '/dashboard/print' ? 'print' : 'summary'
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -101,6 +105,8 @@ export default function DashboardPage() {
     const month = getCurrentMonthDates()
     setStartDate(month.startDate)
     setEndDate(month.endDate)
+    // Navigate to summary view
+    router.push(`/dashboard?startDate=${month.startDate}&endDate=${month.endDate}`)
   }
 
   if (!user) {
@@ -167,7 +173,7 @@ export default function DashboardPage() {
               <div className="flex items-end gap-2">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant={activeView === 'summary' ? 'default' : 'outline'}
                   onClick={handleSetCurrentMonth}
                   className="whitespace-nowrap"
                 >
@@ -175,20 +181,20 @@ export default function DashboardPage() {
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant={activeView === 'table' ? 'default' : 'outline'}
                   onClick={() => router.push(`/dashboard/calendar?startDate=${startDate}&endDate=${endDate}`)}
                   className="whitespace-nowrap flex items-center gap-2"
                 >
-                  <Calendar className="h-4 w-4" />
+                  <Table className="mr-2 h-4 w-4" />
                   Table View
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant={activeView === 'print' ? 'default' : 'outline'}
                   onClick={() => router.push(`/dashboard/print?startDate=${startDate}&endDate=${endDate}`)}
                   className="whitespace-nowrap flex items-center gap-2"
                 >
-                  <Printer className="h-4 w-4" />
+                  <Printer className="mr-2 h-4 w-4" />
                   Print View
                 </Button>
               </div>

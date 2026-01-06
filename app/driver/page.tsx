@@ -13,12 +13,374 @@ import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
-import { Plus, Trash2, Users, MapPin, Calendar, Pencil } from 'lucide-react'
+import { Plus, Trash2, Users, MapPin, Calendar, Pencil, Table, List, Train, ArrowRight, ArrowLeft, Clock, FileText, Phone, Home } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { ShareButton } from '@/components/share-button'
 import { AddToCalendarButton } from '@/components/add-to-calendar-button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useActivity } from '@/components/activity-provider'
+import { getDirectionLabel, getCurrentMonthDates } from '@/lib/utils'
+import React from 'react'
+
+type RideGroup = {
+  toRides: Ride[]
+  fromRides: Ride[]
+}
+
+// Helper function to generate all Thursdays in the date range
+const getAllThursdays = (start: string, end: string): string[] => {
+  const thursdays: string[] = []
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  
+  // Find the first Thursday on or after start date
+  let currentDate = new Date(startDate)
+  const dayOfWeek = currentDate.getDay() // 0 = Sunday, 4 = Thursday
+  const daysUntilThursday = dayOfWeek <= 4 ? (4 - dayOfWeek) : (11 - dayOfWeek)
+  currentDate.setDate(currentDate.getDate() + daysUntilThursday)
+  
+  // Add all Thursdays until end date
+  while (currentDate <= endDate) {
+    thursdays.push(currentDate.toISOString().split('T')[0])
+    currentDate.setDate(currentDate.getDate() + 7) // Next Thursday
+  }
+  
+  return thursdays
+}
+
+// Full Scheduled Summary View Component (like Monthly Summary)
+function FullScheduledSummaryView({ rides, usersMap, activity }: { rides: Ride[], usersMap: Record<string, User>, activity: string | null }) {
+  // Group rides by date
+  const ridesByDate: Record<string, Ride[]> = {}
+  rides.forEach(ride => {
+    if (!ridesByDate[ride.date]) {
+      ridesByDate[ride.date] = []
+    }
+    ridesByDate[ride.date].push(ride)
+  })
+
+  const sortedDates = Object.keys(ridesByDate).sort()
+
+  if (rides.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          No scheduled rides found.
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {sortedDates.map(date => (
+        <Card key={date}>
+          <CardHeader>
+            <CardTitle className="text-xl">
+              {format(new Date(date), 'EEEE, MMMM d, yyyy')}
+            </CardTitle>
+            <CardDescription>
+              {ridesByDate[date].length} ride{ridesByDate[date].length !== 1 ? 's' : ''}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {ridesByDate[date].map((ride) => {
+                const driver = usersMap[ride.driverId]
+                const isFull = ride.availableSeats <= 0
+
+                return (
+                  <Card key={ride.id} className="border-l-4 border-l-primary">
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        {/* Header */}
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              {(ride.direction === 'from-school' || ride.direction === 'back-home') ? (
+                                <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+                              ) : (
+                                <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                              )}
+                              <h3 className="text-lg font-semibold">
+                                {getDirectionLabel(ride.direction)}
+                              </h3>
+                              {isFull && (
+                                <span className="px-2 py-1 text-xs font-medium bg-destructive/10 text-destructive rounded">
+                                  Full
+                                </span>
+                              )}
+                            </div>
+                            {ride.pickupTime && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                                <Clock className="h-4 w-4" />
+                                <span>Pickup Time: {ride.pickupTime}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Driver Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-3">
+                            <div className="flex items-start gap-2">
+                              <Users className="h-4 w-4 text-muted-foreground mt-1" />
+                              <div>
+                                <p className="text-sm font-medium">Driver</p>
+                                <p className="text-sm text-muted-foreground">{ride.driverName}</p>
+                                {driver?.phone && (
+                                  <a 
+                                    href={`tel:${driver.phone}`} 
+                                    className="text-sm text-primary hover:underline flex items-center gap-1 mt-1"
+                                  >
+                                    <Phone className="h-3 w-3" />
+                                    {driver.phone}
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-start gap-2">
+                              <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
+                              <div>
+                                <p className="text-sm font-medium">Pickup Location</p>
+                                <p className="text-sm text-muted-foreground">{ride.pickupAddress}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div className="flex items-start gap-2">
+                              <Users className="h-4 w-4 text-muted-foreground mt-1" />
+                              <div>
+                                <p className="text-sm font-medium">Seats</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {ride.passengers.length} / {ride.totalSeats} seats
+                                  {ride.availableSeats > 0 && (
+                                    <span className="text-green-600 ml-2">
+                                      ({ride.availableSeats} available)
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            {ride.notes && (
+                              <div className="flex items-start gap-2">
+                                <FileText className="h-4 w-4 text-muted-foreground mt-1" />
+                                <div>
+                                  <p className="text-sm font-medium">Notes</p>
+                                  <p className="text-sm text-muted-foreground">{ride.notes}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Passengers */}
+                        {ride.passengers.length > 0 && (
+                          <div className="pt-4 border-t">
+                            <p className="text-sm font-medium mb-3">
+                              Passengers ({ride.passengers.length})
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {ride.passengers.map((passenger) => {
+                                const parent = usersMap[passenger.parentId]
+                                const childParents = passenger.child?.parents || []
+                                const allParents = childParents.length > 0 
+                                  ? childParents 
+                                  : parent 
+                                    ? [{ id: parent.id, name: parent.name, phone: parent.phone }]
+                                    : []
+
+                                return (
+                                  <div key={passenger.id} className="bg-muted/50 p-3 rounded-md">
+                                    <div className="font-medium text-sm">{passenger.childName}</div>
+                                    {allParents.length > 0 && (
+                                      <div className="text-xs mt-2 space-y-1">
+                                        {allParents.map((p) => (
+                                          <div key={p.id} className="text-muted-foreground">
+                                            <span>הורה: </span>
+                                            {p.phone ? (
+                                              <a 
+                                                href={`tel:${p.phone}`} 
+                                                className="hover:text-foreground hover:underline flex items-center gap-1"
+                                                title={p.phone}
+                                              >
+                                                <Phone className="h-3 w-3" />
+                                                {p.name}
+                                              </a>
+                                            ) : (
+                                              <span>{p.name}</span>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {passenger.pickupFromHome && passenger.pickupAddress && (
+                                      <div className="text-xs mt-2 flex items-start gap-1 text-primary">
+                                        <Home className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                                        <span>Home pickup: {passenger.pickupAddress}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+// Full Scheduled Table View Component (like Calendar View)
+function FullScheduledTableView({ rides, activity }: { rides: Ride[], activity: string | null }) {
+  // Group rides by date and separate TO and FROM
+  const ridesByDate: Record<string, RideGroup> = {}
+  rides.forEach(ride => {
+    if (!ridesByDate[ride.date]) {
+      ridesByDate[ride.date] = { toRides: [], fromRides: [] }
+    }
+    
+    // Categorize rides as TO or FROM
+    const isToRide = ride.direction === 'to-school' || 
+                     ride.direction === 'to-tennis-center' || 
+                     ride.direction === 'to-train-station'
+    
+    if (isToRide) {
+      ridesByDate[ride.date].toRides.push(ride)
+    } else {
+      ridesByDate[ride.date].fromRides.push(ride)
+    }
+  })
+
+  // Get date range from rides
+  const dates = Object.keys(ridesByDate).sort()
+  const startDate = dates.length > 0 ? dates[0] : new Date().toISOString().split('T')[0]
+  const endDate = dates.length > 0 ? dates[dates.length - 1] : new Date().toISOString().split('T')[0]
+  
+  // Get all Thursdays in the date range
+  const allThursdays = getAllThursdays(startDate, endDate)
+  
+  // Merge Thursdays with dates that have rides
+  const allDatesSet = new Set([...allThursdays, ...dates])
+  const sortedDates = Array.from(allDatesSet).sort()
+
+  // Helper function to determine if date should be red
+  const isRedDate = (date: string, index: number) => {
+    return index % 3 === 2
+  }
+
+  if (rides.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          No scheduled rides found.
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            {/* Header */}
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="border border-gray-300 p-2 text-left font-semibold">Date</th>
+                <th colSpan={4} className="border border-gray-300 p-2 text-center font-semibold bg-green-100">
+                  TO
+                </th>
+                <th colSpan={6} className="border border-gray-300 p-2 text-center font-semibold bg-purple-100">
+                  FROM
+                </th>
+              </tr>
+              <tr>
+                <th className="border border-gray-300 p-2 bg-gray-200"></th>
+                <th className="border border-gray-300 p-2 bg-green-100 font-medium">Name</th>
+                <th className="border border-gray-300 p-2 bg-green-100 font-medium">Car seats</th>
+                <th className="border border-gray-300 p-2 bg-green-100 font-medium">Name</th>
+                <th className="border border-gray-300 p-2 bg-green-100 font-medium">Car seats</th>
+                <th className="border border-gray-300 p-2 bg-purple-100 font-medium">Name</th>
+                <th className="border border-gray-300 p-2 bg-purple-100 font-medium">Car seats</th>
+                <th className="border border-gray-300 p-2 bg-purple-100 font-medium">Name</th>
+                <th className="border border-gray-300 p-2 bg-purple-100 font-medium">Car seats</th>
+                <th className="border border-gray-300 p-2 bg-purple-100 font-medium">Name</th>
+                <th className="border border-gray-300 p-2 bg-purple-100 font-medium">Car seats</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedDates.map((date, index) => {
+                const dateRides = ridesByDate[date] || { toRides: [], fromRides: [] }
+                const { toRides, fromRides } = dateRides
+                const dateBgColor = isRedDate(date, index) ? 'bg-red-100' : 'bg-white'
+                
+                return (
+                  <tr key={date}>
+                    {/* Date Column */}
+                    <td className={`border border-gray-300 p-2 font-medium ${dateBgColor}`}>
+                      {format(new Date(date), 'dd/MM/yyyy')}
+                    </td>
+                    
+                    {/* TO Section - Up to 2 rides */}
+                    {[0, 1].map((i) => (
+                      <React.Fragment key={i}>
+                        <td className={`border border-gray-300 p-2 bg-green-50 ${toRides.length > i ? '' : 'text-gray-400'}`}>
+                          {toRides.length > i ? (
+                            <div className="flex items-center gap-1">
+                              <span>{toRides[i].driverName}</span>
+                              {toRides[i].direction === 'to-train-station' && (
+                                <Train className="h-3 w-3 text-gray-600" />
+                              )}
+                            </div>
+                          ) : ''}
+                        </td>
+                        <td className={`border border-gray-300 p-2 bg-green-50 text-center ${toRides.length > i ? '' : 'text-gray-400'}`}>
+                          {toRides.length > i ? (() => {
+                            const ride = toRides[i]
+                            const takenSeats = ride.totalSeats - ride.availableSeats
+                            return `${ride.totalSeats}/${takenSeats}`
+                          })() : ''}
+                        </td>
+                      </React.Fragment>
+                    ))}
+                    
+                    {/* FROM Section - Up to 3 rides */}
+                    {[0, 1, 2].map((i) => (
+                      <React.Fragment key={i}>
+                        <td className={`border border-gray-300 p-2 bg-purple-50 ${fromRides.length > i ? '' : 'text-gray-400'}`}>
+                          {fromRides.length > i ? fromRides[i].driverName : ''}
+                        </td>
+                        <td className={`border border-gray-300 p-2 bg-purple-50 text-center ${fromRides.length > i ? '' : 'text-gray-400'}`}>
+                          {fromRides.length > i ? (() => {
+                            const ride = fromRides[i]
+                            const takenSeats = ride.totalSeats - ride.availableSeats
+                            return `${ride.totalSeats}/${takenSeats}`
+                          })() : ''}
+                        </td>
+                      </React.Fragment>
+                    ))}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 function DriverPageContent() {
   const { user, logout } = useAuth()
@@ -30,8 +392,11 @@ function DriverPageContent() {
     return dateParam || new Date().toISOString().split('T')[0]
   })
   const [showAllRides, setShowAllRides] = useState(false) // Admin: show all rides or filter by date
+  const [showFullScheduled, setShowFullScheduled] = useState(false) // Show all driver's scheduled rides
+  const [viewMode, setViewMode] = useState<'summary' | 'table'>('summary') // View mode: summary or table
   const [allRides, setAllRides] = useState<Ride[]>([]) // Store all rides
   const [rides, setRides] = useState<Ride[]>([]) // Filtered rides by date
+  const [fullScheduledRides, setFullScheduledRides] = useState<Ride[]>([]) // All driver's rides for full scheduled view
   const [isAdmin, setIsAdmin] = useState(false)
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(true)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -220,26 +585,48 @@ function DriverPageContent() {
 
   // Filter rides by selected date and activity (date filter always applies)
   useEffect(() => {
-    // First filter by date
-    let filtered = allRides.filter(ride => ride.date === selectedDate)
-    
-    // Then filter by activity if activity is set
-    if (activity === 'tennis') {
-      filtered = filtered.filter(ride => ride.direction === 'to-tennis-center' || ride.direction === 'back-home')
-    } else if (activity === 'kidu') {
-      filtered = filtered.filter(ride => ride.direction === 'to-school' || ride.direction === 'from-school' || ride.direction === 'to-train-station')
+    if (showFullScheduled) {
+      // Show all driver's rides filtered by activity only
+      let filtered = allRides
+      
+      // Filter by activity if activity is set
+      if (activity === 'tennis') {
+        filtered = filtered.filter(ride => ride.direction === 'to-tennis-center' || ride.direction === 'back-home')
+      } else if (activity === 'kidu') {
+        filtered = filtered.filter(ride => ride.direction === 'to-school' || ride.direction === 'from-school' || ride.direction === 'to-train-station')
+      }
+      
+      // Sort by date, then by direction
+      filtered.sort((a, b) => {
+        if (a.date !== b.date) {
+          return a.date.localeCompare(b.date)
+        }
+        if (activity === 'tennis') {
+          if (a.direction === 'to-tennis-center' && b.direction === 'back-home') {
+            return -1
+          }
+          if (a.direction === 'back-home' && b.direction === 'to-tennis-center') {
+            return 1
+          }
+        }
+        return a.direction.localeCompare(b.direction)
+      })
+      
+      setFullScheduledRides(filtered)
+    } else {
+      // First filter by date
+      let filtered = allRides.filter(ride => ride.date === selectedDate)
+      
+      // Then filter by activity if activity is set
+      if (activity === 'tennis') {
+        filtered = filtered.filter(ride => ride.direction === 'to-tennis-center' || ride.direction === 'back-home')
+      } else if (activity === 'kidu') {
+        filtered = filtered.filter(ride => ride.direction === 'to-school' || ride.direction === 'from-school' || ride.direction === 'to-train-station')
+      }
+      
+      setRides(filtered)
     }
-    
-    console.log('Driver mode - Filtering rides:', {
-      totalRides: allRides.length,
-      selectedDate,
-      activity,
-      filteredCount: filtered.length,
-      rideDates: allRides.map(r => ({ id: r.id, date: r.date, direction: r.direction, driverId: r.driverId })),
-      filteredRides: filtered.map(r => ({ id: r.id, date: r.date, direction: r.direction }))
-    })
-    setRides(filtered)
-  }, [allRides, selectedDate, activity])
+  }, [allRides, selectedDate, activity, showFullScheduled])
 
   const handleCreateRide = async () => {
     if (!user) return
@@ -393,6 +780,44 @@ function DriverPageContent() {
           </p>
         </div>
 
+        {!isAdmin && (
+          <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-2">
+            <Button
+              variant={showFullScheduled ? 'default' : 'outline'}
+              onClick={() => {
+                setShowFullScheduled(!showFullScheduled)
+                if (!showFullScheduled) {
+                  setViewMode('summary') // Default to summary view
+                }
+              }}
+              className="w-full sm:w-auto"
+            >
+              {showFullScheduled ? 'Hide Full Scheduled Rides' : 'Show My Full Scheduled Rides'}
+            </Button>
+            {showFullScheduled && (
+              <div className="flex gap-2">
+                <Button
+                  variant={viewMode === 'summary' ? 'default' : 'outline'}
+                  onClick={() => setViewMode('summary')}
+                  className="flex-1 sm:flex-initial"
+                >
+                  <List className="mr-2 h-4 w-4" />
+                  Summary View
+                </Button>
+                <Button
+                  variant={viewMode === 'table' ? 'default' : 'outline'}
+                  onClick={() => setViewMode('table')}
+                  className="flex-1 sm:flex-initial"
+                >
+                  <Table className="mr-2 h-4 w-4" />
+                  Table View
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!showFullScheduled && (
         <Card className="mb-4 sm:mb-6 w-full max-w-full">
           <CardHeader className="p-4 sm:p-6">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -424,6 +849,7 @@ function DriverPageContent() {
             />
           </CardContent>
         </Card>
+        )}
 
         <div className="mb-4 sm:mb-6 w-full max-w-full">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -543,7 +969,7 @@ function DriverPageContent() {
                     <p>Date: {format(new Date(selectedRide.date), 'MMM d, yyyy')}</p>
                     <p>Direction: {getDirectionLabel(selectedRide.direction)}</p>
                     <p>Assigned Passengers: {selectedRide.passengers.length}</p>
-                  </div>
+        </div>
 
                   <div className="grid gap-2">
                     <Label htmlFor="update-seats">Total Seats</Label>
@@ -607,7 +1033,20 @@ function DriverPageContent() {
           </Dialog>
         </div>
 
-        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 w-full max-w-full">
+        {/* Full Scheduled Rides View */}
+        {showFullScheduled && !isAdmin && (
+          <>
+            {viewMode === 'summary' ? (
+              <FullScheduledSummaryView rides={fullScheduledRides} usersMap={usersMap} activity={activity} />
+            ) : (
+              <FullScheduledTableView rides={fullScheduledRides} activity={activity} />
+            )}
+          </>
+        )}
+
+        {/* Regular Date-Filtered View */}
+        {!showFullScheduled && (
+          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 w-full max-w-full">
           {rides.length === 0 ? (
             <Card className="col-span-full w-full">
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -764,7 +1203,8 @@ function DriverPageContent() {
               </Card>
             ))
           )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

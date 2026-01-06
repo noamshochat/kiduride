@@ -7,7 +7,7 @@ import { Ride, User } from '@/lib/demo-data'
 import { supabaseDb } from '@/lib/supabase-db'
 import { Button } from '@/components/ui/button'
 import { format, parseISO } from 'date-fns'
-import { Printer, ArrowLeft, ArrowRight, Users, MapPin, Phone, Clock, Home } from 'lucide-react'
+import { Printer, ArrowLeft, ArrowRight, Users, MapPin, Phone, Clock, Home, List } from 'lucide-react'
 import { useActivity } from '@/components/activity-provider'
 import { getDirectionLabel, getCurrentMonthDates } from '@/lib/utils'
 
@@ -169,11 +169,11 @@ function PrintDashboardContent() {
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <Button
               variant="outline"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push(`/dashboard?startDate=${startDate}&endDate=${endDate}`)}
               className="flex items-center gap-2"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
+              <List className="mr-2 h-4 w-4" />
+              Monthly Summary
             </Button>
             <Button
               onClick={handlePrint}
