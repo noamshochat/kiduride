@@ -397,6 +397,9 @@ function DriverPageContent() {
   const [allRides, setAllRides] = useState<Ride[]>([]) // Store all rides
   const [rides, setRides] = useState<Ride[]>([]) // Filtered rides by date
   const [fullScheduledRides, setFullScheduledRides] = useState<Ride[]>([]) // All driver's rides for full scheduled view
+  const currentMonth = getCurrentMonthDates()
+  const [fullScheduledStartDate, setFullScheduledStartDate] = useState(currentMonth.startDate)
+  const [fullScheduledEndDate, setFullScheduledEndDate] = useState(currentMonth.endDate)
   const [isAdmin, setIsAdmin] = useState(false)
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(true)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -586,8 +589,10 @@ function DriverPageContent() {
   // Filter rides by selected date and activity (date filter always applies)
   useEffect(() => {
     if (showFullScheduled) {
-      // Show all driver's rides filtered by activity only
-      let filtered = allRides
+      // Show driver's rides filtered by date range and activity
+      let filtered = allRides.filter(ride => {
+        return ride.date >= fullScheduledStartDate && ride.date <= fullScheduledEndDate
+      })
       
       // Filter by activity if activity is set
       if (activity === 'tennis') {
@@ -626,7 +631,7 @@ function DriverPageContent() {
       
       setRides(filtered)
     }
-  }, [allRides, selectedDate, activity, showFullScheduled])
+  }, [allRides, selectedDate, activity, showFullScheduled, fullScheduledStartDate, fullScheduledEndDate])
 
   const handleCreateRide = async () => {
     if (!user) return
@@ -788,6 +793,10 @@ function DriverPageContent() {
                 setShowFullScheduled(!showFullScheduled)
                 if (!showFullScheduled) {
                   setViewMode('summary') // Default to summary view
+                  // Initialize date range to current month
+                  const month = getCurrentMonthDates()
+                  setFullScheduledStartDate(month.startDate)
+                  setFullScheduledEndDate(month.endDate)
                 }
               }}
               className="w-full sm:w-auto"
@@ -795,26 +804,80 @@ function DriverPageContent() {
               {showFullScheduled ? 'Hide Full Scheduled Rides' : 'Show My Full Scheduled Rides'}
             </Button>
             {showFullScheduled && (
-              <div className="flex gap-2">
-                <Button
-                  variant={viewMode === 'summary' ? 'default' : 'outline'}
-                  onClick={() => setViewMode('summary')}
-                  className="flex-1 sm:flex-initial"
-                >
-                  <List className="mr-2 h-4 w-4" />
-                  Summary View
-                </Button>
-                <Button
-                  variant={viewMode === 'table' ? 'default' : 'outline'}
-                  onClick={() => setViewMode('table')}
-                  className="flex-1 sm:flex-initial"
-                >
-                  <Table className="mr-2 h-4 w-4" />
-                  Table View
-                </Button>
-              </div>
+              <>
+                <div className="flex gap-2">
+                  <Button
+                    variant={viewMode === 'summary' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('summary')}
+                    className="flex-1 sm:flex-initial"
+                  >
+                    <List className="mr-2 h-4 w-4" />
+                    Summary View
+                  </Button>
+                  <Button
+                    variant={viewMode === 'table' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('table')}
+                    className="flex-1 sm:flex-initial"
+                  >
+                    <Table className="mr-2 h-4 w-4" />
+                    Table View
+                  </Button>
+                </div>
+              </>
             )}
           </div>
+        )}
+
+        {showFullScheduled && !isAdmin && (
+          <Card className="mb-4 sm:mb-6 w-full max-w-full">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
+                Date Range
+              </CardTitle>
+              <CardDescription>
+                Select a date range to filter your scheduled rides
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="fullScheduledStartDate">Start Date</Label>
+                  <Input
+                    id="fullScheduledStartDate"
+                    type="date"
+                    value={fullScheduledStartDate}
+                    onChange={(e) => setFullScheduledStartDate(e.target.value)}
+                    className="max-w-xs"
+                  />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="fullScheduledEndDate">End Date</Label>
+                  <Input
+                    id="fullScheduledEndDate"
+                    type="date"
+                    value={fullScheduledEndDate}
+                    onChange={(e) => setFullScheduledEndDate(e.target.value)}
+                    className="max-w-xs"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const month = getCurrentMonthDates()
+                      setFullScheduledStartDate(month.startDate)
+                      setFullScheduledEndDate(month.endDate)
+                    }}
+                    className="whitespace-nowrap"
+                  >
+                    Current Month
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {!showFullScheduled && (
@@ -1046,7 +1109,7 @@ function DriverPageContent() {
 
         {/* Regular Date-Filtered View */}
         {!showFullScheduled && (
-          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 w-full max-w-full">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 w-full max-w-full">
           {rides.length === 0 ? (
             <Card className="col-span-full w-full">
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -1203,7 +1266,7 @@ function DriverPageContent() {
               </Card>
             ))
           )}
-          </div>
+        </div>
         )}
       </div>
     </div>
