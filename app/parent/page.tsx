@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/components/auth-provider'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, Suspense, useCallback } from 'react'
 import { Ride, User, Child, Passenger } from '@/lib/demo-data'
 import { supabaseDb } from '@/lib/supabase-db'
 import { ChildAutocomplete } from '@/components/child-autocomplete'
@@ -33,13 +33,15 @@ type RideGroup = {
 }
 
 // Table View Component for Parent Page
-function ParentTableView({ rides, usersMap, user, isAdmin, activity, onAssignClick }: { 
+function ParentTableView({ rides, usersMap, user, isAdmin, activity, onAssignClick, onFullRideClick, onEmptyCellClick }: { 
   rides: Ride[], 
   usersMap: Record<string, User>, 
   user: User,
   isAdmin: boolean,
   activity: string | null,
-  onAssignClick: (ride: Ride) => void
+  onAssignClick: (ride: Ride) => void,
+  onFullRideClick: () => void,
+  onEmptyCellClick: (date: string, isToSection: boolean) => void
 }) {
   // Group rides by date and separate TO and FROM
   const ridesByDate: Record<string, RideGroup> = {}
@@ -142,22 +144,40 @@ function ParentTableView({ rides, usersMap, user, isAdmin, activity, onAssignCli
                     {/* TO Section - Up to 2 rides */}
                     {[0, 1].map((i) => (
                       <React.Fragment key={i}>
-                        <td className={`border border-gray-300 p-2 bg-green-50 ${toRides.length > i ? 'cursor-pointer hover:bg-green-100' : 'text-gray-400'}`}>
+                        <td className={`border border-gray-300 p-2 bg-green-50 ${toRides.length > i ? 'cursor-pointer hover:bg-green-100' : 'text-gray-400 cursor-pointer hover:bg-green-100'}`}>
                           {toRides.length > i ? (
                             <div 
                               className="flex items-center gap-1"
-                              onClick={() => onAssignClick(toRides[i])}
+                              onClick={() => {
+                                const ride = toRides[i]
+                                if (ride.availableSeats <= 0) {
+                                  onFullRideClick()
+                                } else {
+                                  onAssignClick(ride)
+                                }
+                              }}
                             >
                               <span>{toRides[i].driverName}</span>
                               {toRides[i].direction === 'to-train-station' && (
                                 <Train className="h-3 w-3 text-gray-600" />
                               )}
                             </div>
-                          ) : ''}
+                          ) : (
+                            <div onClick={() => onEmptyCellClick(date, true)}>
+                              {' '}
+                            </div>
+                          )}
                         </td>
                         <td className={`border border-gray-300 p-2 bg-green-50 text-center ${toRides.length > i ? 'cursor-pointer hover:bg-green-100' : 'text-gray-400'}`}>
                           {toRides.length > i ? (
-                            <div onClick={() => onAssignClick(toRides[i])}>
+                            <div onClick={() => {
+                              const ride = toRides[i]
+                              if (ride.availableSeats <= 0) {
+                                onFullRideClick()
+                              } else {
+                                onAssignClick(ride)
+                              }
+                            }}>
                               {(() => {
                                 const ride = toRides[i]
                                 const takenSeats = ride.totalSeats - ride.availableSeats
@@ -172,16 +192,34 @@ function ParentTableView({ rides, usersMap, user, isAdmin, activity, onAssignCli
                     {/* FROM Section - Up to 3 rides */}
                     {[0, 1, 2].map((i) => (
                       <React.Fragment key={i}>
-                        <td className={`border border-gray-300 p-2 bg-purple-50 ${fromRides.length > i ? 'cursor-pointer hover:bg-purple-100' : 'text-gray-400'}`}>
+                        <td className={`border border-gray-300 p-2 bg-purple-50 ${fromRides.length > i ? 'cursor-pointer hover:bg-purple-100' : 'text-gray-400 cursor-pointer hover:bg-purple-100'}`}>
                           {fromRides.length > i ? (
-                            <div onClick={() => onAssignClick(fromRides[i])}>
+                            <div onClick={() => {
+                              const ride = fromRides[i]
+                              if (ride.availableSeats <= 0) {
+                                onFullRideClick()
+                              } else {
+                                onAssignClick(ride)
+                              }
+                            }}>
                               {fromRides[i].driverName}
                             </div>
-                          ) : ''}
+                          ) : (
+                            <div onClick={() => onEmptyCellClick(date, false)}>
+                              {' '}
+                            </div>
+                          )}
                         </td>
                         <td className={`border border-gray-300 p-2 bg-purple-50 text-center ${fromRides.length > i ? 'cursor-pointer hover:bg-purple-100' : 'text-gray-400'}`}>
                           {fromRides.length > i ? (
-                            <div onClick={() => onAssignClick(fromRides[i])}>
+                            <div onClick={() => {
+                              const ride = fromRides[i]
+                              if (ride.availableSeats <= 0) {
+                                onFullRideClick()
+                              } else {
+                                onAssignClick(ride)
+                              }
+                            }}>
                               {(() => {
                                 const ride = fromRides[i]
                                 const takenSeats = ride.totalSeats - ride.availableSeats
@@ -234,6 +272,7 @@ function ParentPageContent() {
   })
   const [isAdmin, setIsAdmin] = useState(false)
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(true)
+  const [isFullDialogOpen, setIsFullDialogOpen] = useState(false)
 
   // Check admin status on mount
   useEffect(() => {
@@ -495,11 +534,29 @@ function ParentPageContent() {
     }
   }
 
-  const openAssignDialog = (ride: Ride) => {
+  const openAssignDialog = useCallback((ride: Ride) => {
     setSelectedRide(ride)
     setChildrenEntries([{ id: '1', child: null, name: '', pickupFromHome: false, pickupAddress: '' }])
     setIsAssignOpen(true)
-  }
+  }, [])
+
+  const handleFullRideClick = useCallback(() => {
+    setIsFullDialogOpen(true)
+  }, [])
+
+  const handleEmptyCellClick = useCallback((date: string, isToSection: boolean) => {
+    // Determine direction based on section and activity
+    let direction = ''
+    if (activity === 'tennis') {
+      direction = isToSection ? 'to-tennis-center' : 'back-home'
+    } else {
+      // kidu activity
+      direction = isToSection ? 'to-school' : 'from-school'
+    }
+    
+    // Redirect to driver page with date and direction pre-filled
+    router.push(`/driver?date=${date}&direction=${direction}`)
+  }, [activity, router])
 
   const openUpdateDialog = (rideId: string, passenger: Passenger) => {
     setSelectedPassenger({ rideId, passenger })
@@ -660,6 +717,8 @@ function ParentPageContent() {
             isAdmin={isAdmin}
             activity={activity}
             onAssignClick={openAssignDialog}
+            onFullRideClick={handleFullRideClick}
+            onEmptyCellClick={handleEmptyCellClick}
           />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -995,6 +1054,21 @@ function ParentPageContent() {
               >
                 Update
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Ride Full Dialog */}
+        <Dialog open={isFullDialogOpen} onOpenChange={setIsFullDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Ride is Full</DialogTitle>
+              <DialogDescription>
+                This ride has no available seats. Please select another ride.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setIsFullDialogOpen(false)}>OK</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
