@@ -144,29 +144,29 @@ function ParentTableView({ rides, usersMap, user, isAdmin, activity, onAssignCli
                     {/* TO Section - Up to 2 rides */}
                     {[0, 1].map((i) => (
                       <React.Fragment key={i}>
-                        <td className={`border border-gray-300 p-2 bg-green-50 ${toRides.length > i ? 'cursor-pointer hover:bg-green-100' : 'text-gray-400 cursor-pointer hover:bg-green-100'}`}>
+                        <td 
+                          className={`border border-gray-300 p-2 bg-green-50 ${toRides.length > i ? 'cursor-pointer hover:bg-green-100' : 'text-gray-400 cursor-pointer hover:bg-green-100'}`}
+                          onClick={() => {
+                            if (toRides.length > i) {
+                              const ride = toRides[i]
+                              if (ride.availableSeats <= 0) {
+                                onFullRideClick()
+                              } else {
+                                onAssignClick(ride)
+                              }
+                            } else {
+                              onEmptyCellClick(date, true)
+                            }
+                          }}
+                        >
                           {toRides.length > i ? (
-                            <div 
-                              className="flex items-center gap-1"
-                              onClick={() => {
-                                const ride = toRides[i]
-                                if (ride.availableSeats <= 0) {
-                                  onFullRideClick()
-                                } else {
-                                  onAssignClick(ride)
-                                }
-                              }}
-                            >
+                            <div className="flex items-center gap-1">
                               <span>{toRides[i].driverName}</span>
                               {toRides[i].direction === 'to-train-station' && (
                                 <Train className="h-3 w-3 text-gray-600" />
                               )}
                             </div>
-                          ) : (
-                            <div onClick={() => onEmptyCellClick(date, true)}>
-                              {' '}
-                            </div>
-                          )}
+                          ) : ''}
                         </td>
                         <td className={`border border-gray-300 p-2 bg-green-50 text-center ${toRides.length > i ? 'cursor-pointer hover:bg-green-100' : 'text-gray-400'}`}>
                           {toRides.length > i ? (
@@ -192,23 +192,22 @@ function ParentTableView({ rides, usersMap, user, isAdmin, activity, onAssignCli
                     {/* FROM Section - Up to 3 rides */}
                     {[0, 1, 2].map((i) => (
                       <React.Fragment key={i}>
-                        <td className={`border border-gray-300 p-2 bg-purple-50 ${fromRides.length > i ? 'cursor-pointer hover:bg-purple-100' : 'text-gray-400 cursor-pointer hover:bg-purple-100'}`}>
-                          {fromRides.length > i ? (
-                            <div onClick={() => {
+                        <td 
+                          className={`border border-gray-300 p-2 bg-purple-50 ${fromRides.length > i ? 'cursor-pointer hover:bg-purple-100' : 'text-gray-400 cursor-pointer hover:bg-purple-100'}`}
+                          onClick={() => {
+                            if (fromRides.length > i) {
                               const ride = fromRides[i]
                               if (ride.availableSeats <= 0) {
                                 onFullRideClick()
                               } else {
                                 onAssignClick(ride)
                               }
-                            }}>
-                              {fromRides[i].driverName}
-                            </div>
-                          ) : (
-                            <div onClick={() => onEmptyCellClick(date, false)}>
-                              {' '}
-                            </div>
-                          )}
+                            } else {
+                              onEmptyCellClick(date, false)
+                            }
+                          }}
+                        >
+                          {fromRides.length > i ? fromRides[i].driverName : ''}
                         </td>
                         <td className={`border border-gray-300 p-2 bg-purple-50 text-center ${fromRides.length > i ? 'cursor-pointer hover:bg-purple-100' : 'text-gray-400'}`}>
                           {fromRides.length > i ? (
