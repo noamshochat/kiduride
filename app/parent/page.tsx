@@ -43,6 +43,8 @@ function ParentTableView({ rides, usersMap, user, isAdmin, activity, onAssignCli
   onFullRideClick: () => void,
   onEmptyCellClick: (date: string, isToSection: boolean) => void
 }) {
+  const [hoveredRideId, setHoveredRideId] = useState<string | null>(null)
+  
   // Group rides by date and separate TO and FROM
   const ridesByDate: Record<string, RideGroup> = {}
   rides.forEach(ride => {
@@ -168,22 +170,40 @@ function ParentTableView({ rides, usersMap, user, isAdmin, activity, onAssignCli
                             </div>
                           ) : ''}
                         </td>
-                        <td className={`border border-gray-300 p-2 bg-green-50 text-center ${toRides.length > i ? 'cursor-pointer hover:bg-green-100' : 'text-gray-400'}`}>
+                        <td 
+                          className={`border border-gray-300 p-2 bg-green-50 text-center relative ${toRides.length > i ? 'cursor-pointer hover:bg-green-100' : 'text-gray-400'}`}
+                          onMouseEnter={() => toRides.length > i && setHoveredRideId(toRides[i].id)}
+                          onMouseLeave={() => setHoveredRideId(null)}
+                        >
                           {toRides.length > i ? (
-                            <div onClick={() => {
-                              const ride = toRides[i]
-                              if (ride.availableSeats <= 0) {
-                                onFullRideClick()
-                              } else {
-                                onAssignClick(ride)
-                              }
-                            }}>
-                              {(() => {
+                            <>
+                              <div onClick={() => {
                                 const ride = toRides[i]
-                                const takenSeats = ride.totalSeats - ride.availableSeats
-                                return `${ride.totalSeats}/${takenSeats}`
-                              })()}
-                            </div>
+                                if (ride.availableSeats <= 0) {
+                                  onFullRideClick()
+                                } else {
+                                  onAssignClick(ride)
+                                }
+                              }}>
+                                {(() => {
+                                  const ride = toRides[i]
+                                  const takenSeats = ride.totalSeats - ride.availableSeats
+                                  return `${ride.totalSeats}/${takenSeats}`
+                                })()}
+                              </div>
+                              {hoveredRideId === toRides[i].id && toRides[i].passengers.length > 0 && (
+                                <div className="absolute z-50 left-full ml-2 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs rounded-md shadow-lg p-2 min-w-[150px] max-w-[250px] whitespace-nowrap">
+                                  <div className="font-semibold mb-1">Registered Children:</div>
+                                  <ul className="space-y-1">
+                                    {toRides[i].passengers.map((passenger) => (
+                                      <li key={passenger.id}>
+                                        {passenger.childName}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </>
                           ) : ''}
                         </td>
                       </React.Fragment>
@@ -209,22 +229,40 @@ function ParentTableView({ rides, usersMap, user, isAdmin, activity, onAssignCli
                         >
                           {fromRides.length > i ? fromRides[i].driverName : ''}
                         </td>
-                        <td className={`border border-gray-300 p-2 bg-purple-50 text-center ${fromRides.length > i ? 'cursor-pointer hover:bg-purple-100' : 'text-gray-400'}`}>
+                        <td 
+                          className={`border border-gray-300 p-2 bg-purple-50 text-center relative ${fromRides.length > i ? 'cursor-pointer hover:bg-purple-100' : 'text-gray-400'}`}
+                          onMouseEnter={() => fromRides.length > i && setHoveredRideId(fromRides[i].id)}
+                          onMouseLeave={() => setHoveredRideId(null)}
+                        >
                           {fromRides.length > i ? (
-                            <div onClick={() => {
-                              const ride = fromRides[i]
-                              if (ride.availableSeats <= 0) {
-                                onFullRideClick()
-                              } else {
-                                onAssignClick(ride)
-                              }
-                            }}>
-                              {(() => {
+                            <>
+                              <div onClick={() => {
                                 const ride = fromRides[i]
-                                const takenSeats = ride.totalSeats - ride.availableSeats
-                                return `${ride.totalSeats}/${takenSeats}`
-                              })()}
-                            </div>
+                                if (ride.availableSeats <= 0) {
+                                  onFullRideClick()
+                                } else {
+                                  onAssignClick(ride)
+                                }
+                              }}>
+                                {(() => {
+                                  const ride = fromRides[i]
+                                  const takenSeats = ride.totalSeats - ride.availableSeats
+                                  return `${ride.totalSeats}/${takenSeats}`
+                                })()}
+                              </div>
+                              {hoveredRideId === fromRides[i].id && fromRides[i].passengers.length > 0 && (
+                                <div className="absolute z-50 left-full ml-2 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs rounded-md shadow-lg p-2 min-w-[150px] max-w-[250px] whitespace-nowrap">
+                                  <div className="font-semibold mb-1">Registered Children:</div>
+                                  <ul className="space-y-1">
+                                    {fromRides[i].passengers.map((passenger) => (
+                                      <li key={passenger.id}>
+                                        {passenger.childName}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </>
                           ) : ''}
                         </td>
                       </React.Fragment>
