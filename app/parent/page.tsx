@@ -13,9 +13,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { format } from 'date-fns'
-import { Calendar, Users, MapPin, CheckCircle2, XCircle, Plus, X, Home, Phone, LayoutDashboard } from 'lucide-react'
+import { Calendar, Users, MapPin, CheckCircle2, XCircle, Plus, X, Home, Phone, LayoutDashboard, Table, List, Train } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { useActivity } from '@/components/activity-provider'
+import { getCurrentMonthDates } from '@/lib/utils'
+import React from 'react'
 
 interface ChildEntry {
   id: string
@@ -25,15 +27,198 @@ interface ChildEntry {
   pickupAddress: string
 }
 
+type RideGroup = {
+  toRides: Ride[]
+  fromRides: Ride[]
+}
+
+// Table View Component for Parent Page
+function ParentTableView({ rides, usersMap, user, isAdmin, activity, onAssignClick }: { 
+  rides: Ride[], 
+  usersMap: Record<string, User>, 
+  user: User,
+  isAdmin: boolean,
+  activity: string | null,
+  onAssignClick: (ride: Ride) => void
+}) {
+  // Group rides by date and separate TO and FROM
+  const ridesByDate: Record<string, RideGroup> = {}
+  rides.forEach(ride => {
+    if (!ridesByDate[ride.date]) {
+      ridesByDate[ride.date] = { toRides: [], fromRides: [] }
+    }
+    
+    // Categorize rides as TO or FROM
+    const isToRide = ride.direction === 'to-school' || 
+                     ride.direction === 'to-tennis-center' || 
+                     ride.direction === 'to-train-station'
+    
+    if (isToRide) {
+      ridesByDate[ride.date].toRides.push(ride)
+    } else {
+      ridesByDate[ride.date].fromRides.push(ride)
+    }
+  })
+
+  // Get all dates in the range
+  const dates = Object.keys(ridesByDate).sort()
+
+  // Helper function to determine if date should be red (alternating pattern)
+  const isRedDate = (date: string, index: number) => {
+    return index % 3 === 2
+  }
+
+  // Helper function to get direction label
+  const getDirectionLabel = (direction: string) => {
+    switch (direction) {
+      case 'to-school':
+        return 'To university'
+      case 'from-school':
+        return 'From university'
+      case 'to-train-station':
+        return 'To train station'
+      case 'to-tennis-center':
+        return 'To Tennis Center'
+      case 'back-home':
+        return 'Back Home'
+      default:
+        return direction
+    }
+  }
+
+  if (rides.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          No rides available for the selected date range
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            {/* Header */}
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="border border-gray-300 p-2 text-left font-semibold">Date</th>
+                <th colSpan={4} className="border border-gray-300 p-2 text-center font-semibold bg-green-100">
+                  TO
+                </th>
+                <th colSpan={6} className="border border-gray-300 p-2 text-center font-semibold bg-purple-100">
+                  FROM
+                </th>
+              </tr>
+              <tr>
+                <th className="border border-gray-300 p-2 bg-gray-200"></th>
+                <th className="border border-gray-300 p-2 bg-green-100 font-medium">Driver</th>
+                <th className="border border-gray-300 p-2 bg-green-100 font-medium">Seats</th>
+                <th className="border border-gray-300 p-2 bg-green-100 font-medium">Driver</th>
+                <th className="border border-gray-300 p-2 bg-green-100 font-medium">Seats</th>
+                <th className="border border-gray-300 p-2 bg-purple-100 font-medium">Driver</th>
+                <th className="border border-gray-300 p-2 bg-purple-100 font-medium">Seats</th>
+                <th className="border border-gray-300 p-2 bg-purple-100 font-medium">Driver</th>
+                <th className="border border-gray-300 p-2 bg-purple-100 font-medium">Seats</th>
+                <th className="border border-gray-300 p-2 bg-purple-100 font-medium">Driver</th>
+                <th className="border border-gray-300 p-2 bg-purple-100 font-medium">Seats</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dates.map((date, index) => {
+                const dateRides = ridesByDate[date] || { toRides: [], fromRides: [] }
+                const { toRides, fromRides } = dateRides
+                const dateBgColor = isRedDate(date, index) ? 'bg-red-100' : 'bg-white'
+                
+                return (
+                  <tr key={date}>
+                    {/* Date Column */}
+                    <td className={`border border-gray-300 p-2 font-medium ${dateBgColor}`}>
+                      {format(new Date(date), 'dd/MM/yyyy')}
+                    </td>
+                    
+                    {/* TO Section - Up to 2 rides */}
+                    {[0, 1].map((i) => (
+                      <React.Fragment key={i}>
+                        <td className={`border border-gray-300 p-2 bg-green-50 ${toRides.length > i ? 'cursor-pointer hover:bg-green-100' : 'text-gray-400'}`}>
+                          {toRides.length > i ? (
+                            <div 
+                              className="flex items-center gap-1"
+                              onClick={() => onAssignClick(toRides[i])}
+                            >
+                              <span>{toRides[i].driverName}</span>
+                              {toRides[i].direction === 'to-train-station' && (
+                                <Train className="h-3 w-3 text-gray-600" />
+                              )}
+                            </div>
+                          ) : ''}
+                        </td>
+                        <td className={`border border-gray-300 p-2 bg-green-50 text-center ${toRides.length > i ? 'cursor-pointer hover:bg-green-100' : 'text-gray-400'}`}>
+                          {toRides.length > i ? (
+                            <div onClick={() => onAssignClick(toRides[i])}>
+                              {(() => {
+                                const ride = toRides[i]
+                                const takenSeats = ride.totalSeats - ride.availableSeats
+                                return `${ride.totalSeats}/${takenSeats}`
+                              })()}
+                            </div>
+                          ) : ''}
+                        </td>
+                      </React.Fragment>
+                    ))}
+                    
+                    {/* FROM Section - Up to 3 rides */}
+                    {[0, 1, 2].map((i) => (
+                      <React.Fragment key={i}>
+                        <td className={`border border-gray-300 p-2 bg-purple-50 ${fromRides.length > i ? 'cursor-pointer hover:bg-purple-100' : 'text-gray-400'}`}>
+                          {fromRides.length > i ? (
+                            <div onClick={() => onAssignClick(fromRides[i])}>
+                              {fromRides[i].driverName}
+                            </div>
+                          ) : ''}
+                        </td>
+                        <td className={`border border-gray-300 p-2 bg-purple-50 text-center ${fromRides.length > i ? 'cursor-pointer hover:bg-purple-100' : 'text-gray-400'}`}>
+                          {fromRides.length > i ? (
+                            <div onClick={() => onAssignClick(fromRides[i])}>
+                              {(() => {
+                                const ride = fromRides[i]
+                                const takenSeats = ride.totalSeats - ride.availableSeats
+                                return `${ride.totalSeats}/${takenSeats}`
+                              })()}
+                            </div>
+                          ) : ''}
+                        </td>
+                      </React.Fragment>
+                    ))}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function ParentPageContent() {
   const { user, logout } = useAuth()
   const { activity } = useActivity()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const dateParam = searchParams.get('date')
-    return dateParam || new Date().toISOString().split('T')[0]
+  // Get current calendar month dates (first day to last day)
+  const currentMonth = getCurrentMonthDates()
+  const [startDate, setStartDate] = useState(() => {
+    const dateParam = searchParams.get('startDate')
+    return dateParam || currentMonth.startDate
   })
+  const [endDate, setEndDate] = useState(() => {
+    const dateParam = searchParams.get('endDate')
+    return dateParam || currentMonth.endDate
+  })
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('table') // Default to table view
   const [rides, setRides] = useState<Ride[]>([])
   const [isAssignOpen, setIsAssignOpen] = useState(false)
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
@@ -97,13 +282,13 @@ function ParentPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, router])
 
-  // Load rides when date changes or activity changes (but only if user is logged in)
+  // Load rides when date range or activity changes (but only if user is logged in)
   useEffect(() => {
     if (user) {
       loadRides()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, activity])
+  }, [startDate, endDate, activity])
 
   // Handle ride ID from query params - auto-select ride when page loads
   useEffect(() => {
@@ -119,15 +304,23 @@ function ParentPageContent() {
   }, [rides, searchParams])
 
   const loadRides = async () => {
-    const dateRides = await supabaseDb.getRidesByDate(selectedDate)
+    const allRides = await supabaseDb.getRidesByDateRange(startDate, endDate)
     
     // Filter by activity if activity is set
-    let filtered = dateRides
+    let filtered = allRides
     if (activity === 'tennis') {
-      filtered = dateRides.filter(ride => ride.direction === 'to-tennis-center' || ride.direction === 'back-home')
+      filtered = allRides.filter(ride => ride.direction === 'to-tennis-center' || ride.direction === 'back-home')
     } else if (activity === 'kidu') {
-      filtered = dateRides.filter(ride => ride.direction === 'to-school' || ride.direction === 'from-school' || ride.direction === 'to-train-station')
+      filtered = allRides.filter(ride => ride.direction === 'to-school' || ride.direction === 'from-school' || ride.direction === 'to-train-station')
     }
+    
+    // Sort by date, then by direction
+    filtered.sort((a, b) => {
+      if (a.date !== b.date) {
+        return a.date.localeCompare(b.date)
+      }
+      return a.direction.localeCompare(b.direction)
+    })
     
     setRides(filtered)
   }
@@ -389,38 +582,95 @@ function ParentPageContent() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Select Date
+              Date Range
             </CardTitle>
+            <CardDescription>
+              Select a date range to view rides (default: current calendar month)
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4 justify-between">
-              <Input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="max-w-xs"
-              />
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="startDate">Start Date</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="endDate">End Date</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const month = getCurrentMonthDates()
+                    setStartDate(month.startDate)
+                    setEndDate(month.endDate)
+                  }}
+                  className="whitespace-nowrap"
+                >
+                  Current Month
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/dashboard')}
+                  className="flex items-center gap-2 whitespace-nowrap"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Monthly Summary
+                </Button>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
               <Button
-                variant="outline"
-                onClick={() => router.push('/dashboard')}
+                variant={viewMode === 'table' ? 'default' : 'outline'}
+                onClick={() => setViewMode('table')}
                 className="flex items-center gap-2"
               >
-                <LayoutDashboard className="h-4 w-4" />
-                Monthly Summary
+                <Table className="h-4 w-4" />
+                Table View
+              </Button>
+              <Button
+                variant={viewMode === 'card' ? 'default' : 'outline'}
+                onClick={() => setViewMode('card')}
+                className="flex items-center gap-2"
+              >
+                <List className="h-4 w-4" />
+                Card View
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {rides.length === 0 ? (
-            <Card className="col-span-full">
-              <CardContent className="py-8 text-center text-muted-foreground">
-                No rides available for {format(new Date(selectedDate), 'MMM d, yyyy')}
-              </CardContent>
-            </Card>
-          ) : (
-            rides.map((ride) => {
+        {viewMode === 'table' ? (
+          <ParentTableView 
+            rides={rides} 
+            usersMap={usersMap} 
+            user={user}
+            isAdmin={isAdmin}
+            activity={activity}
+            onAssignClick={openAssignDialog}
+          />
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {rides.length === 0 ? (
+              <Card className="col-span-full">
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  No rides available for the selected date range
+                </CardContent>
+              </Card>
+            ) : (
+              rides.map((ride) => {
               const userPassengers = ride.passengers.filter(p => p.parentId === user.id)
               // If admin, show all passengers; otherwise show only user's passengers
               const displayedPassengers = isAdmin ? ride.passengers : userPassengers
@@ -550,6 +800,7 @@ function ParentPageContent() {
             })
           )}
         </div>
+        )}
 
         <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
