@@ -102,7 +102,7 @@ function ParentTableView({ rides, usersMap, user, isAdmin, activity, onAssignCli
 
   return (
     <Card>
-      <CardContent className="p-0">
+      <CardContent className="p-0 pb-8">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             {/* Header */}
@@ -747,16 +747,18 @@ function ParentPageContent() {
         </Card>
 
         {viewMode === 'table' ? (
-          <ParentTableView 
-            rides={rides} 
-            usersMap={usersMap} 
-            user={user}
-            isAdmin={isAdmin}
-            activity={activity}
-            onAssignClick={openAssignDialog}
-            onFullRideClick={handleFullRideClick}
-            onEmptyCellClick={handleEmptyCellClick}
-          />
+          <div className="mb-16">
+            <ParentTableView 
+              rides={rides} 
+              usersMap={usersMap} 
+              user={user}
+              isAdmin={isAdmin}
+              activity={activity}
+              onAssignClick={openAssignDialog}
+              onFullRideClick={handleFullRideClick}
+              onEmptyCellClick={handleEmptyCellClick}
+            />
+          </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {rides.length === 0 ? (
