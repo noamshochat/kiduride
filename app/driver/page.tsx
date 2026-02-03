@@ -49,7 +49,7 @@ const getAllThursdays = (start: string, end: string): string[] => {
 }
 
 // Full Scheduled Summary View Component (like Monthly Summary)
-function FullScheduledSummaryView({ rides, usersMap, activity }: { rides: Ride[], usersMap: Record<string, User>, activity: string | null }) {
+function FullScheduledSummaryView({ rides, usersMap, activity, user, isAdmin, onDeleteRide }: { rides: Ride[], usersMap: Record<string, User>, activity: string | null, user: User | null, isAdmin: boolean, onDeleteRide: (rideId: string, rideDriverId?: string) => Promise<void> }) {
   // Group rides by date
   const ridesByDate: Record<string, Ride[]> = {}
   rides.forEach(ride => {
@@ -118,6 +118,17 @@ function FullScheduledSummaryView({ rides, usersMap, activity }: { rides: Ride[]
                               </div>
                             )}
                           </div>
+                          {(isAdmin || ride.driverId === user?.id) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onDeleteRide(ride.id, ride.driverId)}
+                              className="text-destructive flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
+                              title="Delete ride"
+                            >
+                              <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                            </Button>
+                          )}
                         </div>
 
                         {/* Driver Info */}
@@ -1100,7 +1111,7 @@ function DriverPageContent() {
         {showFullScheduled && !isAdmin && (
           <>
             {viewMode === 'summary' ? (
-              <FullScheduledSummaryView rides={fullScheduledRides} usersMap={usersMap} activity={activity} />
+              <FullScheduledSummaryView rides={fullScheduledRides} usersMap={usersMap} activity={activity} user={user} isAdmin={isAdmin} onDeleteRide={handleDeleteRide} />
             ) : (
               <FullScheduledTableView rides={fullScheduledRides} activity={activity} />
             )}
