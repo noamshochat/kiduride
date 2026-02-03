@@ -417,6 +417,9 @@ function DriverPageContent() {
   const [isUpdateOpen, setIsUpdateOpen] = useState(false)
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
   const [usersMap, setUsersMap] = useState<Record<string, User>>({})
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false)
+  const [whatsAppTemplateSid, setWhatsAppTemplateSid] = useState('')
+  const [whatsAppContentVariables, setWhatsAppContentVariables] = useState('')
   const [formData, setFormData] = useState(() => {
     const dateParam = searchParams.get('date')
     const directionParam = searchParams.get('direction') as 'to-school' | 'from-school' | 'to-train-station' | 'to-tennis-center' | 'back-home' | null
@@ -770,6 +773,49 @@ function DriverPageContent() {
     }
   }
 
+  const handleSendWeeklyWhatsApp = async () => {
+    if (!whatsAppTemplateSid) {
+      alert('Please enter the Twilio Template SID')
+      return
+    }
+
+    if (confirm('Send WhatsApp messages to all drivers with rides this week?')) {
+      setIsSendingWhatsApp(true)
+      try {
+        const response = await fetch('/api/admin/send-weekly-drivers-whatsapp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user?.id,
+            templateSid: whatsAppTemplateSid,
+            contentVariables: whatsAppContentVariables || '{}',
+          }),
+        })
+
+        const data = await response.json()
+
+        if (response.ok) {
+          alert(`Success! Messages sent to ${data.driversMessaged}/${data.totalDrivers} drivers.${
+            data.errors && data.errors.length > 0
+              ? `\n\nFailed: ${data.errors.map((e: any) => `${e.driverName}: ${e.error}`).join('\n')}`
+              : ''
+          }`)
+          setWhatsAppTemplateSid('')
+          setWhatsAppContentVariables('')
+        } else {
+          alert(`Failed: ${data.error || 'Unknown error'}`)
+        }
+      } catch (error: any) {
+        console.error('Error sending WhatsApp:', error)
+        alert(`Error: ${error.message || 'Failed to send messages'}`)
+      } finally {
+        setIsSendingWhatsApp(false)
+      }
+    }
+  }
+
   if (!user || isLoadingAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -926,6 +972,60 @@ function DriverPageContent() {
         )}
 
         <div className="mb-4 sm:mb-6 w-full max-w-full">
+          {isAdmin && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto mb-4 sm:mb-0 bg-green-50 hover:bg-green-100">
+                  📱 Send WhatsApp to This Week's Drivers
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-[95vw] max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Send Weekly Schedule to Drivers</DialogTitle>
+                  <DialogDescription>
+                    Send WhatsApp messages to all drivers with rides this week using a Twilio template
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="templateSid">Twilio Template SID</Label>
+                    <Input
+                      id="templateSid"
+                      placeholder="HXb5b62575e6e4ff6129ad7c8efe1f983e"
+                      value={whatsAppTemplateSid}
+                      onChange={(e) => setWhatsAppTemplateSid(e.target.value)}
+                      className="font-mono text-xs"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Get this from your Twilio console → Content Templates
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contentVariables">Content Variables (JSON, optional)</Label>
+                    <Input
+                      id="contentVariables"
+                      placeholder='{"1":"12/1","2":"3pm"}'
+                      value={whatsAppContentVariables}
+                      onChange={(e) => setWhatsAppContentVariables(e.target.value)}
+                      className="font-mono text-xs"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Variables to fill template placeholders (e.g., date, time)
+                    </p>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    onClick={handleSendWeeklyWhatsApp}
+                    disabled={isSendingWhatsApp || !whatsAppTemplateSid}
+                    className="w-full sm:w-auto"
+                  >
+                    {isSendingWhatsApp ? 'Sending...' : 'Send WhatsApp Messages'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button className="w-full sm:w-auto">
