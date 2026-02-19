@@ -1,4 +1,5 @@
 import { getDirectionLabel } from '@/lib/utils'
+import { RideDirection } from '@/lib/demo-data'
 
 interface DirectionLabelProps {
   direction: string
@@ -6,7 +7,7 @@ interface DirectionLabelProps {
 }
 
 export function DirectionLabel({ direction, className }: DirectionLabelProps) {
-  const label = getDirectionLabel(direction)
+  const label = getDirectionLabel(direction as RideDirection)
 
   if (direction === 'to-school' || direction === 'from-school') {
     const colonIdx = label.indexOf(': ')
