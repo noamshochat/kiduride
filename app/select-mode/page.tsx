@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Car, Users } from 'lucide-react'
 import { useEffect } from 'react'
 import { Navigation } from '@/components/navigation'
+import { getNextThursday } from '@/lib/utils'
 
 export default function SelectModePage() {
   const { user, isLoading } = useAuth()
@@ -29,64 +30,79 @@ export default function SelectModePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
       <Navigation />
       <div className="flex items-center justify-center p-4 min-h-[calc(100vh-64px)]">
-        <Card className="w-full max-w-2xl">
-        <CardHeader className="text-center">
-          <CardTitle className={`text-3xl font-bold ${activity === 'tennis' ? 'text-green-600' : 'text-primary'}`}>Welcome, {user.name}!</CardTitle>
-          <CardDescription>
-            Choose how you'd like to use {activity === 'tennis' ? 'TennisRide' : 'KiduRide'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <div className="w-full max-w-2xl space-y-6">
+
+          {/* Header */}
+          <div className="text-center">
+            <h1 className={`text-3xl font-bold ${activity === 'tennis' ? 'text-green-600' : 'text-primary'}`}>
+              Welcome, {user.name}!
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Choose how you'd like to use {activity === 'tennis' ? 'TennisRide' : 'KiduRide'}
+            </p>
+          </div>
+
+          {/* Mode cards */}
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => router.push('/driver')}>
-              <CardHeader>
+            <Card
+              className="cursor-pointer border-2 border-transparent hover:border-primary/30 hover:shadow-xl transition-all duration-200 bg-white/80 backdrop-blur-sm"
+              onClick={() => router.push('/driver')}
+            >
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-center mb-4">
-                  <div className="p-4 rounded-full bg-primary/10">
-                    <Car className="h-12 w-12 text-primary" />
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5">
+                    <Car className="h-10 w-10 text-primary" />
                   </div>
                 </div>
-                <CardTitle className="text-center">Driver Mode</CardTitle>
+                <CardTitle className="text-center text-xl">Driver Mode</CardTitle>
                 <CardDescription className="text-center">
                   Create and manage rides for children
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Create new rides</li>
-                  <li>• Manage available seats</li>
-                  <li>• View passenger assignments</li>
-                  <li>• Set pickup locations</li>
+                  {['Create new rides', 'Manage available seats', 'View passenger assignments', 'Set pickup locations'].map(item => (
+                    <li key={item} className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary/50 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </Card>
 
-            <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => router.push('/parent')}>
-              <CardHeader>
+            <Card
+              className="cursor-pointer border-2 border-transparent hover:border-primary/30 hover:shadow-xl transition-all duration-200 bg-white/80 backdrop-blur-sm"
+              onClick={() => { const d = getNextThursday(); router.push(`/dashboard?startDate=${d}&endDate=${d}`) }}
+            >
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-center mb-4">
-                  <div className="p-4 rounded-full bg-primary/10">
-                    <Users className="h-12 w-12 text-primary" />
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5">
+                    <Users className="h-10 w-10 text-primary" />
                   </div>
                 </div>
-                <CardTitle className="text-center">Parent Mode</CardTitle>
+                <CardTitle className="text-center text-xl">Parent Mode</CardTitle>
                 <CardDescription className="text-center">
                   Find rides and assign your children
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Browse available rides</li>
-                  <li>• Assign children to rides</li>
-                  <li>• Set custom pickup addresses</li>
-                  <li>• Manage your bookings</li>
+                  {['Browse available rides', 'Assign children to rides', 'Set custom pickup addresses', 'Manage your bookings'].map(item => (
+                    <li key={item} className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary/50 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </Card>
           </div>
-        </CardContent>
-        </Card>
+
+        </div>
       </div>
     </div>
   )

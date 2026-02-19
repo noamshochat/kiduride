@@ -1,34 +1,54 @@
 'use client'
 
 import { useAuth } from '@/components/auth-provider'
-import { useRouter, usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { Ride, User } from '@/lib/demo-data'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { Ride, User, Child } from '@/lib/demo-data'
+import { ChildAutocomplete } from '@/components/child-autocomplete'
+import { Checkbox } from '@/components/ui/checkbox'
 import { supabaseDb } from '@/lib/supabase-db'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { format } from 'date-fns'
-import { Calendar, Users, MapPin, Phone, Clock, FileText, ArrowRight, ArrowLeft, Home, Printer, Table } from 'lucide-react'
+import { Calendar, Users, MapPin, Phone, Clock, FileText, ArrowRight, ArrowLeft, Home, Printer, Table, Plus, X } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { useActivity } from '@/components/activity-provider'
-import { getDirectionLabel, getCurrentMonthDates } from '@/lib/utils'
+import { getCurrentMonthDates } from '@/lib/utils'
+import { DirectionLabel } from '@/components/direction-label'
 
-export default function DashboardPage() {
-  const { user, logout } = useAuth()
+interface ChildEntry {
+  id: string
+  child: Child | null
+  name: string
+  pickupFromHome: boolean
+  pickupAddress: string
+}
+
+function DashboardContent() {
+  const { user } = useAuth()
   const { activity } = useActivity()
   const router = useRouter()
   const pathname = usePathname()
-  
+  const searchParams = useSearchParams()
+
   // Get current calendar month dates (first day to last day)
   const currentMonth = getCurrentMonthDates()
-  const [startDate, setStartDate] = useState(currentMonth.startDate)
-  const [endDate, setEndDate] = useState(currentMonth.endDate)
+  const [startDate, setStartDate] = useState(() => searchParams.get('startDate') || currentMonth.startDate)
+  const [endDate, setEndDate] = useState(() => searchParams.get('endDate') || currentMonth.endDate)
   const [rides, setRides] = useState<Ride[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [usersMap, setUsersMap] = useState<Record<string, User>>({})
-  
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [pendingRemoval, setPendingRemoval] = useState<{ rideId: string; passengerId: string; childName: string } | null>(null)
+  const [isAssignOpen, setIsAssignOpen] = useState(false)
+  const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
+  const [childrenEntries, setChildrenEntries] = useState<ChildEntry[]>([
+    { id: '1', child: null, name: '', pickupFromHome: false, pickupAddress: '' }
+  ])
+
   // Determine active view based on current path
   const activeView = pathname === '/dashboard/calendar' ? 'table' : pathname === '/dashboard/print' ? 'print' : 'summary'
 
@@ -38,6 +58,12 @@ export default function DashboardPage() {
       router.push('/')
     }
   }, [user, router])
+
+  // Check admin status on mount
+  useEffect(() => {
+    if (!user) return
+    supabaseDb.checkIsAdmin(user.id).then(setIsAdmin).catch(() => setIsAdmin(false))
+  }, [user])
 
   // Load users map on mount
   useEffect(() => {
@@ -110,6 +136,88 @@ export default function DashboardPage() {
     }
   }
 
+  const handleRemovePassenger = (rideId: string, passengerId: string, childName: string) => {
+    setPendingRemoval({ rideId, passengerId, childName })
+  }
+
+  const confirmRemoval = async () => {
+    if (!pendingRemoval) return
+    const { rideId, passengerId } = pendingRemoval
+    setPendingRemoval(null)
+    try {
+      const success = await supabaseDb.removePassenger(rideId, passengerId)
+      if (success) {
+        await loadRides()
+      } else {
+        alert('Failed to remove child. Please try again.')
+      }
+    } catch (error) {
+      console.error(error)
+      alert('Failed to remove child from ride. Please try again.')
+    }
+  }
+
+  const openAssignDialog = (ride: Ride) => {
+    setSelectedRide(ride)
+    setChildrenEntries([{ id: '1', child: null, name: '', pickupFromHome: false, pickupAddress: '' }])
+    setIsAssignOpen(true)
+  }
+
+  const addChildEntry = () => {
+    setChildrenEntries(prev => [...prev, { id: Date.now().toString(), child: null, name: '', pickupFromHome: false, pickupAddress: '' }])
+  }
+
+  const removeChildEntry = (id: string) => {
+    setChildrenEntries(prev => prev.length > 1 ? prev.filter(e => e.id !== id) : prev)
+  }
+
+  const updateChildEntry = (id: string, updates: Partial<ChildEntry>) => {
+    setChildrenEntries(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e))
+  }
+
+  const handleAssignChildren = async () => {
+    if (!selectedRide || !user) return
+
+    const validEntries = childrenEntries.filter(e => e.child !== null)
+    if (validEntries.length === 0) { alert('Please select at least one registered child'); return }
+    if (selectedRide.availableSeats < validEntries.length) { alert(`Not enough seats. Only ${selectedRide.availableSeats} available.`); return }
+
+    const existingNames = selectedRide.passengers.map(p => p.childName.toLowerCase())
+    const existingChildIds = selectedRide.passengers.filter(p => p.childId).map(p => p.childId!)
+    const dupNames = validEntries.map(e => `${e.child!.firstName}${e.child!.lastName ? ' ' + e.child!.lastName : ''}`.toLowerCase()).filter(n => existingNames.includes(n))
+    const dupIds = validEntries.map(e => e.child!.id).filter(id => existingChildIds.includes(id))
+    if (dupNames.length > 0 || dupIds.length > 0) { alert(`Already assigned: ${[...dupNames].join(', ')}`); return }
+
+    let successCount = 0
+    try {
+      for (const entry of validEntries) {
+        const childName = `${entry.child!.firstName}${entry.child!.lastName ? ' ' + entry.child!.lastName : ''}`
+        const passenger = {
+          id: `p${Date.now()}-${Math.random()}`,
+          childId: entry.child!.id,
+          childName,
+          parentId: user.id,
+          parentName: user.name,
+          pickupFromHome: entry.pickupFromHome,
+          pickupAddress: entry.pickupFromHome && entry.pickupAddress.trim() ? entry.pickupAddress.trim() : undefined,
+        }
+        const success = await supabaseDb.addPassenger(selectedRide.id, passenger)
+        if (success) successCount++
+      }
+      if (successCount > 0) {
+        await loadRides()
+        setIsAssignOpen(false)
+        setSelectedRide(null)
+        setChildrenEntries([{ id: '1', child: null, name: '', pickupFromHome: false, pickupAddress: '' }])
+      } else {
+        alert('Failed to assign children. Ride may be full.')
+      }
+    } catch (error) {
+      console.error(error)
+      alert('Failed to assign children. Please try again.')
+    }
+  }
+
   const handleSetCurrentMonth = () => {
     const month = getCurrentMonthDates()
     setStartDate(month.startDate)
@@ -138,73 +246,69 @@ export default function DashboardPage() {
   const sortedDates = Object.keys(ridesByDate).sort()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
       <Navigation />
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className={`text-3xl font-bold ${activity === 'tennis' ? 'text-green-600' : 'text-primary'}`}>
+      <div className="container mx-auto px-4 py-6">
+        <div className="mb-6">
+          <h1 className={`text-2xl font-bold ${activity === 'tennis' ? 'text-green-600' : 'text-primary'}`}>
             {activity === 'tennis' ? 'TennisRide' : 'KiduRide'} Dashboard
           </h1>
-          <p className="text-muted-foreground">View all rides for the selected date range</p>
+          <p className="text-muted-foreground text-sm mt-0.5">View all rides for the selected date range</p>
         </div>
 
         {/* Date Range Selector */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Date Range
-            </CardTitle>
-            <CardDescription>
-              Select a date range to view rides (default: current calendar month)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="startDate">Start Date</Label>
+        <Card className="mb-5 bg-white/80 backdrop-blur-sm">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="startDate" className="text-xs text-muted-foreground">Start Date</Label>
                 <Input
                   id="startDate"
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
+                  className="h-9"
                 />
               </div>
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="endDate">End Date</Label>
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="endDate" className="text-xs text-muted-foreground">End Date</Label>
                 <Input
                   id="endDate"
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  className="h-9"
                 />
               </div>
               <div className="flex items-end gap-2">
                 <Button
                   type="button"
                   variant={activeView === 'summary' ? 'default' : 'outline'}
+                  size="sm"
                   onClick={handleSetCurrentMonth}
-                  className="whitespace-nowrap"
+                  className="whitespace-nowrap h-9"
                 >
-                  Current Month
+                  Default View
                 </Button>
                 <Button
                   type="button"
                   variant={activeView === 'table' ? 'default' : 'outline'}
+                  size="sm"
                   onClick={() => router.push(`/dashboard/calendar?startDate=${startDate}&endDate=${endDate}`)}
-                  className="whitespace-nowrap flex items-center gap-2"
+                  className="whitespace-nowrap h-9"
                 >
-                  <Table className="mr-2 h-4 w-4" />
-                  Table View
+                  <Table className="mr-1.5 h-3.5 w-3.5" />
+                  Table
                 </Button>
                 <Button
                   type="button"
                   variant={activeView === 'print' ? 'default' : 'outline'}
+                  size="sm"
                   onClick={() => router.push(`/dashboard/print?startDate=${startDate}&endDate=${endDate}`)}
-                  className="whitespace-nowrap flex items-center gap-2"
+                  className="whitespace-nowrap h-9"
                 >
-                  <Printer className="mr-2 h-4 w-4" />
-                  Print View
+                  <Printer className="mr-1.5 h-3.5 w-3.5" />
+                  Print
                 </Button>
               </div>
             </div>
@@ -213,8 +317,8 @@ export default function DashboardPage() {
 
         {/* Loading State */}
         {isLoading && (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
+          <Card className="bg-white/80">
+            <CardContent className="py-12 text-center text-muted-foreground">
               Loading rides...
             </CardContent>
           </Card>
@@ -222,213 +326,329 @@ export default function DashboardPage() {
 
         {/* No Rides */}
         {!isLoading && rides.length === 0 && (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              No rides available for the selected date range
+          <Card className="bg-white/80">
+            <CardContent className="py-12 text-center">
+              <Calendar className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="text-muted-foreground">No rides available for the selected date range</p>
             </CardContent>
           </Card>
         )}
 
         {/* Rides by Date */}
         {!isLoading && rides.length > 0 && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {sortedDates.map(date => (
-              <Card key={date}>
-                <CardHeader>
-                  <CardTitle className="text-xl">
+              <div key={date}>
+                {/* Date header */}
+                <div className="flex items-center gap-3 mb-3">
+                  <h2 className="text-base font-semibold text-gray-700">
                     {format(new Date(date), 'EEEE, MMMM d, yyyy')}
-                  </CardTitle>
-                  <CardDescription>
+                  </h2>
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-xs text-muted-foreground">
                     {ridesByDate[date].length} ride{ridesByDate[date].length !== 1 ? 's' : ''}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {ridesByDate[date].map((ride) => {
-                      const driver = usersMap[ride.driverId]
-                      const isFull = ride.availableSeats <= 0
+                  </span>
+                </div>
 
-                      return (
-                        <Card key={ride.id} className="border-l-4 border-l-primary">
-                          <CardContent className="pt-6">
-                            <div className="space-y-4">
-                              {/* Header */}
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    {(ride.direction === 'from-school' || ride.direction === 'back-home') ? (
-                                      <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-                                    ) : (
-                                      <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                                    )}
-                                    <h3 className="text-lg font-semibold">
-                                      {getDirectionLabel(ride.direction)}
-                                    </h3>
-                                    {isFull && (
-                                      <span className="px-2 py-1 text-xs font-medium bg-destructive/10 text-destructive rounded">
-                                        Full
-                                      </span>
-                                    )}
-                                  </div>
-                                  {ride.pickupTime && (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                                      <Clock className="h-4 w-4" />
-                                      <span>Pickup Time: {ride.pickupTime}</span>
-                                    </div>
-                                  )}
-                                </div>
+                <div className="space-y-3">
+                  {ridesByDate[date].map((ride) => {
+                    const driver = usersMap[ride.driverId]
+                    const isFull = ride.availableSeats <= 0
+                    const isToRide = ride.direction === 'to-school' || ride.direction === 'to-tennis-center' || ride.direction === 'to-train-station'
+
+                    return (
+                      <Card
+                        key={ride.id}
+                        className={`border-l-4 bg-white/90 shadow-sm hover:shadow-md transition-shadow ${isToRide ? 'border-l-green-500' : 'border-l-purple-500'}`}
+                      >
+                        <CardContent className="p-4">
+
+                          {/* Top bar: direction badge + time */}
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${isToRide ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                                {isToRide
+                                  ? <ArrowRight className="h-3 w-3" />
+                                  : <ArrowLeft className="h-3 w-3" />
+                                }
+                                <DirectionLabel direction={ride.direction} />
+                              </span>
+                              {isFull ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">
+                                  Full
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-600">
+                                  {ride.availableSeats} open
+                                </span>
+                              )}
+                            </div>
+                            {ride.pickupTime && (
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+                                <Clock className="h-3 w-3" />
+                                {ride.pickupTime}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Info row */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3 text-sm">
+                            <div className="flex items-start gap-2">
+                              <Users className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <p className="font-medium truncate">{ride.driverName}</p>
+                                {driver?.phone && (
+                                  <a href={`tel:${driver.phone}`} className="text-xs text-primary hover:underline flex items-center gap-0.5 mt-0.5">
+                                    <Phone className="h-3 w-3" />{driver.phone}
+                                  </a>
+                                )}
                               </div>
-
-                              {/* Driver Info */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-3">
-                                  <div className="flex items-start gap-2">
-                                    <Users className="h-4 w-4 text-muted-foreground mt-1" />
-                                    <div>
-                                      <p className="text-sm font-medium">Driver</p>
-                                      <p className="text-sm text-muted-foreground">{ride.driverName}</p>
-                                      {driver?.phone && (
-                                        <a 
-                                          href={`tel:${driver.phone}`} 
-                                          className="text-sm text-primary hover:underline flex items-center gap-1 mt-1"
-                                        >
-                                          <Phone className="h-3 w-3" />
-                                          {driver.phone}
-                                        </a>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-start gap-2">
-                                    <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
-                                    <div>
-                                      <p className="text-sm font-medium">Pickup Location</p>
-                                      <p className="text-sm text-muted-foreground">{ride.pickupAddress}</p>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                  <div className="flex items-start gap-2">
-                                    <Users className="h-4 w-4 text-muted-foreground mt-1" />
-                                    <div>
-                                      <p className="text-sm font-medium">Seats</p>
-                                      <p className="text-sm text-muted-foreground">
-                                        {ride.passengers.length} / {ride.totalSeats} seats
-                                        {ride.availableSeats > 0 && (
-                                          <span className="text-green-600 ml-2">
-                                            ({ride.availableSeats} available)
-                                          </span>
-                                        )}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  {ride.notes && (
-                                    <div className="flex items-start gap-2">
-                                      <FileText className="h-4 w-4 text-muted-foreground mt-1" />
-                                      <div>
-                                        <p className="text-sm font-medium">Notes</p>
-                                        <p className="text-sm text-muted-foreground">{ride.notes}</p>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                              <p className="text-sm text-muted-foreground">{ride.pickupAddress}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex gap-0.5">
+                                {Array.from({ length: ride.totalSeats }).map((_, i) => (
+                                  <div
+                                    key={i}
+                                    className={`h-2.5 w-2.5 rounded-full border ${i < ride.passengers.length ? (isToRide ? 'bg-green-500 border-green-500' : 'bg-purple-500 border-purple-500') : 'bg-white border-gray-300'}`}
+                                  />
+                                ))}
                               </div>
+                              <span className="text-xs text-muted-foreground">{ride.passengers.length}/{ride.totalSeats}</span>
+                            </div>
+                          </div>
 
-                              {/* Passengers */}
-                              {ride.passengers.length > 0 && (
-                                <div className="pt-4 border-t">
-                                  <p className="text-sm font-medium mb-3">
-                                    Passengers ({ride.passengers.length})
-                                  </p>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {ride.passengers.map((passenger) => {
-                                      const parent = usersMap[passenger.parentId]
-                                      const parentPhone = parent?.phone
-                                      const childParents = passenger.child?.parents || []
-                                      const allParents = childParents.length > 0 
-                                        ? childParents 
-                                        : parent 
-                                          ? [{ id: parent.id, name: parent.name, phone: parent.phone }]
-                                          : []
+                          {/* Notes */}
+                          {ride.notes && (
+                            <div className="flex items-start gap-2 mb-3 text-sm">
+                              <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                              <p className="text-muted-foreground">{ride.notes}</p>
+                            </div>
+                          )}
 
-                                      return (
-                                        <div key={passenger.id} className="bg-muted/50 p-3 rounded-md">
-                                          <div className="font-medium text-sm">{passenger.childName}</div>
+                          {/* Passengers */}
+                          {ride.passengers.length > 0 && (
+                            <div className="border-t pt-3 mb-3">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                                Passengers ({ride.passengers.length})
+                              </p>
+                              <div className="space-y-1.5">
+                                {ride.passengers.map((passenger) => {
+                                  const parent = usersMap[passenger.parentId]
+                                  const parentPhone = parent?.phone
+                                  const childParents = passenger.child?.parents || []
+                                  const allParents = childParents.length > 0
+                                    ? childParents
+                                    : parent
+                                      ? [{ id: parent.id, name: parent.name, phone: parent.phone }]
+                                      : []
+
+                                  return (
+                                    <div key={passenger.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-1.5">
+                                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white flex-shrink-0 mt-0.5 ${isToRide ? 'bg-green-500' : 'bg-purple-500'}`}>
+                                          {passenger.childName.charAt(0)}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="text-sm font-medium">{passenger.childName}</p>
                                           {allParents.length > 0 && (
-                                            <div className="text-xs mt-2 space-y-1">
+                                            <div className="flex flex-wrap gap-x-2 mt-0.5">
                                               {allParents.map((p) => (
-                                                <div key={p.id} className="text-muted-foreground">
-                                                  <span>הורה: </span>
+                                                <span key={p.id} className="text-xs text-muted-foreground">
                                                   {p.phone ? (
-                                                    <a 
-                                                      href={`tel:${p.phone}`} 
-                                                      className="hover:text-foreground hover:underline flex items-center gap-1"
-                                                      title={p.phone}
-                                                    >
-                                                      <Phone className="h-3 w-3" />
-                                                      {p.name}
+                                                    <a href={`tel:${p.phone}`} className="hover:text-primary hover:underline inline-flex items-center gap-0.5">
+                                                      <Phone className="h-2.5 w-2.5" />{p.name}
                                                     </a>
-                                                  ) : (
-                                                    <span>{p.name}</span>
-                                                  )}
-                                                </div>
+                                                  ) : p.name}
+                                                </span>
                                               ))}
                                             </div>
                                           )}
-                                          {allParents.length === 0 && (
-                                            <div className="text-xs text-muted-foreground mt-1">
-                                              הורה: {parentPhone ? (
-                                                <a 
-                                                  href={`tel:${parentPhone}`} 
-                                                  className="hover:text-foreground hover:underline"
-                                                  title={parentPhone}
-                                                >
-                                                  {passenger.parentName}
-                                                </a>
-                                              ) : (
-                                                passenger.parentName
-                                              )}
-                                            </div>
+                                          {allParents.length === 0 && parentPhone && (
+                                            <a href={`tel:${parentPhone}`} className="text-xs text-muted-foreground hover:text-primary hover:underline inline-flex items-center gap-0.5 mt-0.5">
+                                              <Phone className="h-2.5 w-2.5" />{passenger.parentName}
+                                            </a>
                                           )}
                                           {passenger.pickupFromHome && passenger.pickupAddress && (
-                                            <div className="text-xs mt-2 flex items-start gap-1 text-primary">
-                                              <Home className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                                              <span>Home pickup: {passenger.pickupAddress}</span>
+                                            <div className="flex items-center gap-1 text-xs text-primary mt-0.5">
+                                              <Home className="h-3 w-3 flex-shrink-0" />
+                                              {passenger.pickupAddress}
                                             </div>
                                           )}
                                         </div>
-                                      )
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* View Details Link */}
-                              <div className="pt-2 border-t">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => router.push(`/ride/${ride.id}`)}
-                                  className="w-full sm:w-auto"
-                                >
-                                  View Full Details
-                                </Button>
+                                      </div>
+                                      {isAdmin && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleRemovePassenger(ride.id, passenger.id, passenger.childName)}
+                                          className="text-destructive h-6 px-2 text-xs flex-shrink-0 ml-2"
+                                        >
+                                          Remove
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )
+                                })}
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
+                          )}
+
+                          {/* Actions */}
+                          <div className="flex gap-2 pt-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(`/ride/${ride.id}`)}
+                              className="h-8 text-xs"
+                            >
+                              View Details
+                            </Button>
+                            {ride.availableSeats > 0 && (
+                              <Button
+                                size="sm"
+                                onClick={() => openAssignDialog(ride)}
+                                className="h-8 text-xs gap-1.5"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                Assign Child
+                              </Button>
+                            )}
+                          </div>
+
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Assign Child Dialog */}
+      <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Assign Children to Ride</DialogTitle>
+            <DialogDescription>
+              Select registered children and specify pickup details.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRide && (
+            <div className="grid gap-4 py-4">
+              <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                <p><strong>Ride Details:</strong></p>
+                <p>Date: {format(new Date(selectedRide.date), 'MMM d, yyyy')}</p>
+                <p>Direction: <DirectionLabel direction={selectedRide.direction} /></p>
+                <p>Pickup Location: {selectedRide.pickupAddress}</p>
+                <p>Available Seats: {selectedRide.availableSeats}</p>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Children</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addChildEntry} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Child
+                  </Button>
+                </div>
+                {childrenEntries.map((entry, index) => (
+                  <Card key={entry.id} className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 space-y-3">
+                          <div>
+                            <Label>Child {index + 1}</Label>
+                            <ChildAutocomplete
+                              activity={activity}
+                              value={entry.child}
+                              onChange={(child) => updateChildEntry(entry.id, {
+                                child,
+                                name: child ? `${child.firstName}${child.lastName ? ' ' + child.lastName : ''}` : ''
+                              })}
+                              placeholder="Search for a registered child..."
+                            />
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`pickup-${entry.id}`}
+                              checked={entry.pickupFromHome}
+                              onCheckedChange={(checked) => updateChildEntry(entry.id, {
+                                pickupFromHome: checked === true,
+                                pickupAddress: checked === true ? entry.pickupAddress : ''
+                              })}
+                            />
+                            <Label htmlFor={`pickup-${entry.id}`} className="text-sm font-normal cursor-pointer flex items-center gap-2">
+                              <Home className="h-4 w-4" />
+                              Pickup from home (different address)
+                            </Label>
+                          </div>
+                          {entry.pickupFromHome && (
+                            <div>
+                              <Label>Home Address</Label>
+                              <Input
+                                placeholder="Enter home address"
+                                value={entry.pickupAddress}
+                                onChange={(e) => updateChildEntry(entry.id, { pickupAddress: e.target.value })}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        {childrenEntries.length > 1 && (
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeChildEntry(entry.id)} className="text-destructive">
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAssignOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handleAssignChildren}
+              disabled={!selectedRide || selectedRide.availableSeats <= 0 || childrenEntries.every(e => !e.child)}
+            >
+              Assign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Passenger Confirmation Dialog */}
+      <Dialog open={!!pendingRemoval} onOpenChange={(open) => { if (!open) setPendingRemoval(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Child</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove <strong>{pendingRemoval?.childName}</strong> from this ride?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingRemoval(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmRemoval}>Remove</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
+  )
+}

@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button'
 import { format, parseISO } from 'date-fns'
 import { Printer, ArrowLeft, ArrowRight, Users, MapPin, Phone, Clock, Home, List } from 'lucide-react'
 import { useActivity } from '@/components/activity-provider'
-import { getDirectionLabel, getCurrentMonthDates } from '@/lib/utils'
+import { getCurrentMonthDates } from '@/lib/utils'
+import { DirectionLabel } from '@/components/direction-label'
 
 function PrintDashboardContent() {
   const { user } = useAuth()
@@ -72,7 +73,7 @@ function PrintDashboardContent() {
         filtered = allRides.filter(ride => ride.direction === 'to-school' || ride.direction === 'from-school' || ride.direction === 'to-train-station')
       }
       
-      // Sort by date, then by direction (Tennis: to-tennis-center before back-home)
+      // Sort by date, then by direction (to before from)
       filtered.sort((a, b) => {
         if (a.date !== b.date) {
           return a.date.localeCompare(b.date)
@@ -83,6 +84,15 @@ function PrintDashboardContent() {
             return -1
           }
           if (a.direction === 'back-home' && b.direction === 'to-tennis-center') {
+            return 1
+          }
+        }
+        // For kidu activity, prioritize to-school over from-school
+        if (activity === 'kidu' || !activity) {
+          if (a.direction === 'to-school' && b.direction === 'from-school') {
+            return -1
+          }
+          if (a.direction === 'from-school' && b.direction === 'to-school') {
             return 1
           }
         }
@@ -173,7 +183,7 @@ function PrintDashboardContent() {
               className="flex items-center gap-2"
             >
               <List className="mr-2 h-4 w-4" />
-              Monthly Summary
+              Default View
             </Button>
             <Button
               onClick={handlePrint}
@@ -213,7 +223,7 @@ function PrintDashboardContent() {
           {/* Rides by Date - Print Layout */}
           {!isLoading && rides.length > 0 && (
             <div className="space-y-6">
-              {sortedDates.map((date, dateIndex) => (
+              {sortedDates.map((date) => (
                 <div key={date} className="print-page">
                   <h2 className="text-xl font-semibold mb-4 pb-2 border-b">
                     {format(parseISO(date), 'EEEE, MMMM d, yyyy')}
@@ -238,7 +248,7 @@ function PrintDashboardContent() {
                               <ArrowRight className="h-4 w-4 text-gray-600" />
                             )}
                             <h3 className="text-sm font-semibold flex-1">
-                              {getDirectionLabel(ride.direction)}
+                              <DirectionLabel direction={ride.direction} />
                             </h3>
                             {isFull && (
                               <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-700 rounded">

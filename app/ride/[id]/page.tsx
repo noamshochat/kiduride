@@ -4,13 +4,13 @@ import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Ride } from '@/lib/demo-data'
 import { supabaseDb } from '@/lib/supabase-db'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { format } from 'date-fns'
-import { Users, MapPin, Calendar, ArrowRight, ArrowLeft, Phone } from 'lucide-react'
+import { Users, MapPin, ArrowRight, ArrowLeft, Phone, Clock, Home } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { useAuth } from '@/components/auth-provider'
-import { getDirectionLabel } from '@/lib/utils'
+import { DirectionLabel } from '@/components/direction-label'
 
 export default function RideDetailPage() {
   const params = useParams()
@@ -31,13 +31,9 @@ export default function RideDetailPage() {
         const foundRide = await supabaseDb.getRideById(params.id)
         if (foundRide) {
           setRide(foundRide)
-          
-          // Load users map for parent phone numbers
           const users = await supabaseDb.getUsers()
           const map: Record<string, any> = {}
-          users.forEach(u => {
-            map[u.id] = u
-          })
+          users.forEach(u => { map[u.id] = u })
           setUsersMap(map)
         }
       } catch (error) {
@@ -52,12 +48,10 @@ export default function RideDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
         <Navigation />
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-lg">Loading ride details...</div>
-          </div>
+        <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
+          <p className="text-muted-foreground">Loading ride details...</p>
         </div>
       </div>
     )
@@ -65,18 +59,14 @@ export default function RideDetailPage() {
 
   if (!ride) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
         <Navigation />
         <div className="container mx-auto px-4 py-8">
-          <Card className="max-w-2xl mx-auto">
-            <CardHeader>
-              <CardTitle>Ride Not Found</CardTitle>
-              <CardDescription>The ride you're looking for doesn't exist or has been removed.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => router.push('/parent')} className="w-full sm:w-auto">
-                Browse Available Rides
-              </Button>
+          <Card className="max-w-lg mx-auto bg-white/90 text-center">
+            <CardContent className="py-12">
+              <p className="font-semibold text-lg mb-1">Ride Not Found</p>
+              <p className="text-muted-foreground text-sm mb-6">This ride doesn't exist or has been removed.</p>
+              <Button onClick={() => router.push('/parent')}>Browse Available Rides</Button>
             </CardContent>
           </Card>
         </div>
@@ -84,100 +74,130 @@ export default function RideDetailPage() {
     )
   }
 
+  const isToRide = ride.direction !== 'from-school' && ride.direction !== 'back-home'
+  const isFull = ride.availableSeats <= 0
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
       <Navigation />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl">
+      <div className="container mx-auto px-4 py-6">
+        <div className="max-w-2xl mx-auto space-y-4">
+
+          {/* Header card */}
+          <Card className="bg-white/90 shadow-sm">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-muted-foreground font-medium mb-1">
                     {format(new Date(ride.date), 'EEEE, MMMM d, yyyy')}
-                  </CardTitle>
-                  <CardDescription className="text-base mt-2">
-                    <span className="flex items-center gap-2">
-                      {(ride.direction === 'from-school' || ride.direction === 'back-home') ? (
-                        <ArrowLeft className="h-4 w-4" />
-                      ) : (
-                        <ArrowRight className="h-4 w-4" />
-                      )}
-                      {getDirectionLabel(ride.direction)}
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ${isToRide ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                      {isToRide ? <ArrowRight className="h-3.5 w-3.5" /> : <ArrowLeft className="h-3.5 w-3.5" />}
+                      <DirectionLabel direction={ride.direction} />
                     </span>
-                  </CardDescription>
+                    {isFull ? (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-600">Full</span>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600">{ride.availableSeats} seats open</span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <Users className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <p className="font-medium">Driver</p>
-                    <p className="text-muted-foreground">{ride.driverName}</p>
-                  </div>
-                </div>
 
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <p className="font-medium">Pickup Location</p>
-                    <p className="text-muted-foreground">{ride.pickupAddress}</p>
-                  </div>
+              {ride.pickupTime && (
+                <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  Pickup at {ride.pickupTime}
                 </div>
+              )}
+            </CardContent>
+          </Card>
 
-                <div className="flex items-start gap-3">
-                  <Users className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <p className="font-medium">Seats</p>
-                    <p className="text-muted-foreground">
-                      {ride.passengers.length} / {ride.totalSeats} seats filled
-                      {ride.availableSeats === 0 && (
-                        <span className="text-destructive ml-2">(Full)</span>
-                      )}
-                    </p>
-                  </div>
+          {/* Info card */}
+          <Card className="bg-white/90 shadow-sm">
+            <CardContent className="p-5 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Users className="h-4 w-4 text-primary" />
                 </div>
-
-                {ride.notes && (
-                  <div>
-                    <p className="font-medium mb-2">Notes</p>
-                    <p className="text-muted-foreground">{ride.notes}</p>
-                  </div>
-                )}
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Driver</p>
+                  <p className="font-medium mt-0.5">{ride.driverName}</p>
+                </div>
               </div>
 
-              {ride.passengers.length > 0 && (
-                <div className="pt-4 border-t">
-                  <p className="font-medium mb-4">Passengers ({ride.passengers.length})</p>
-                  <ul className="space-y-3">
-                    {ride.passengers.map((passenger) => {
-                      const parent = usersMap[passenger.parentId]
-                      const parentPhone = parent?.phone
-                      const childParents = passenger.child?.parents || []
-                      const allParents = childParents.length > 0 
-                        ? childParents 
-                        : parent 
-                          ? [{ id: parent.id, name: parent.name, phone: parent.phone }]
-                          : []
-                      
-                      return (
-                        <li key={passenger.id} className="bg-muted/50 p-3 rounded-md">
-                          <div className="font-medium">{passenger.childName}</div>
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <MapPin className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Pickup Location</p>
+                  <p className="font-medium mt-0.5">{ride.pickupAddress}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Users className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Seats</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: ride.totalSeats }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-2.5 w-2.5 rounded-full border ${i < ride.passengers.length ? (isToRide ? 'bg-green-500 border-green-500' : 'bg-purple-500 border-purple-500') : 'bg-white border-gray-300'}`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-sm text-muted-foreground">{ride.passengers.length} / {ride.totalSeats} filled</span>
+                  </div>
+                </div>
+              </div>
+
+              {ride.notes && (
+                <div className="pt-3 border-t">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Notes</p>
+                  <p className="text-sm text-muted-foreground">{ride.notes}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Passengers card */}
+          {ride.passengers.length > 0 && (
+            <Card className="bg-white/90 shadow-sm">
+              <CardContent className="p-5">
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-3">
+                  Passengers ({ride.passengers.length})
+                </p>
+                <div className="space-y-2">
+                  {ride.passengers.map((passenger) => {
+                    const parent = usersMap[passenger.parentId]
+                    const parentPhone = parent?.phone
+                    const childParents = passenger.child?.parents || []
+                    const allParents = childParents.length > 0
+                      ? childParents
+                      : parent
+                        ? [{ id: parent.id, name: parent.name, phone: parent.phone }]
+                        : []
+
+                    return (
+                      <div key={passenger.id} className="flex items-start gap-3 bg-gray-50 rounded-xl px-3 py-2.5">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0 ${isToRide ? 'bg-green-500' : 'bg-purple-500'}`}>
+                          {passenger.childName.charAt(0)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm">{passenger.childName}</p>
                           {allParents.length > 0 && (
-                            <div className="text-sm mt-2 space-y-1">
+                            <div className="space-y-0.5 mt-0.5">
                               {allParents.map((p) => (
-                                <div key={p.id} className="text-muted-foreground">
-                                  <span>הורה: </span>
+                                <div key={p.id} className="text-xs text-muted-foreground">
                                   {p.phone ? (
-                                    <a 
-                                      href={`tel:${p.phone}`} 
-                                      className="hover:text-foreground hover:underline flex items-center gap-1"
-                                      title={p.phone}
-                                    >
-                                      <Phone className="h-3 w-3" />
-                                      {p.name}
+                                    <a href={`tel:${p.phone}`} className="hover:text-primary hover:underline inline-flex items-center gap-1">
+                                      <Phone className="h-3 w-3" />{p.name}
                                     </a>
                                   ) : (
                                     <span>{p.name}</span>
@@ -186,57 +206,48 @@ export default function RideDetailPage() {
                               ))}
                             </div>
                           )}
-                          {allParents.length === 0 && (
-                            <div className="text-sm text-muted-foreground mt-1">
-                              הורה: {parentPhone ? (
-                                <a 
-                                  href={`tel:${parentPhone}`} 
-                                  className="hover:text-foreground hover:underline"
-                                  title={parentPhone}
-                                >
-                                  {passenger.parentName}
-                                </a>
-                              ) : (
-                                passenger.parentName
-                              )}
-                            </div>
+                          {allParents.length === 0 && parentPhone && (
+                            <a href={`tel:${parentPhone}`} className="text-xs text-muted-foreground hover:text-primary hover:underline inline-flex items-center gap-1 mt-0.5">
+                              <Phone className="h-3 w-3" />{passenger.parentName}
+                            </a>
                           )}
                           {passenger.pickupFromHome && passenger.pickupAddress && (
-                            <div className="text-xs mt-2 flex items-start gap-1 text-primary">
-                              <MapPin className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                              <span>Home pickup: {passenger.pickupAddress}</span>
+                            <div className="flex items-center gap-1 text-xs text-primary mt-1">
+                              <Home className="h-3 w-3 flex-shrink-0" />
+                              {passenger.pickupAddress}
                             </div>
                           )}
-                        </li>
-                      )
-                    })}
-                  </ul>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              )}
+              </CardContent>
+            </Card>
+          )}
 
-              <div className="pt-4 border-t flex gap-3">
-                {user ? (
-                  <>
-                    <Button onClick={() => router.push('/parent')} variant="outline" className="flex-1">
-                      Browse More Rides
-                    </Button>
-                    {ride.driverId === user.id && (
-                      <Button onClick={() => router.push('/driver')} className="flex-1">
-                        Back to My Rides
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <Button onClick={() => router.push('/')} className="w-full">
-                    Sign In to Join Rides
+          {/* Actions */}
+          <div className="flex gap-3 pb-4">
+            {user ? (
+              <>
+                <Button onClick={() => router.push('/parent')} variant="outline" className="flex-1">
+                  Browse More Rides
+                </Button>
+                {ride.driverId === user.id && (
+                  <Button onClick={() => router.push('/driver')} className="flex-1">
+                    Back to My Rides
                   </Button>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+              </>
+            ) : (
+              <Button onClick={() => router.push('/')} className="w-full">
+                Sign In to Join Rides
+              </Button>
+            )}
+          </div>
+
         </div>
       </div>
     </div>
   )
 }
-

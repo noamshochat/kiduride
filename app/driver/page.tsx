@@ -6,7 +6,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { Ride, User } from '@/lib/demo-data'
 import { supabaseDb } from '@/lib/supabase-db'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { NumberInput } from '@/components/ui/number-input'
@@ -19,7 +19,8 @@ import { ShareButton } from '@/components/share-button'
 import { AddToCalendarButton } from '@/components/add-to-calendar-button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useActivity } from '@/components/activity-provider'
-import { getDirectionLabel, getCurrentMonthDates } from '@/lib/utils'
+import { getCurrentMonthDates } from '@/lib/utils'
+import { DirectionLabel } from '@/components/direction-label'
 import React from 'react'
 
 type RideGroup = {
@@ -63,8 +64,8 @@ function FullScheduledSummaryView({ rides, usersMap, activity, user, isAdmin, on
 
   if (rides.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
+      <Card className="bg-white/80">
+        <CardContent className="py-12 text-center text-muted-foreground">
           No scheduled rides found.
         </CardContent>
       </Card>
@@ -72,182 +73,147 @@ function FullScheduledSummaryView({ rides, usersMap, activity, user, isAdmin, on
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {sortedDates.map(date => (
-        <Card key={date}>
-          <CardHeader>
-            <CardTitle className="text-xl">
+        <div key={date}>
+          {/* Date header */}
+          <div className="flex items-center gap-3 mb-3">
+            <h2 className="text-base font-semibold text-gray-700">
               {format(new Date(date), 'EEEE, MMMM d, yyyy')}
-            </CardTitle>
-            <CardDescription>
+            </h2>
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground">
               {ridesByDate[date].length} ride{ridesByDate[date].length !== 1 ? 's' : ''}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {ridesByDate[date].map((ride) => {
-                const driver = usersMap[ride.driverId]
-                const isFull = ride.availableSeats <= 0
+            </span>
+          </div>
 
-                return (
-                  <Card key={ride.id} className="border-l-4 border-l-primary">
-                    <CardContent className="pt-6">
-                      <div className="space-y-4">
-                        {/* Header */}
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              {(ride.direction === 'from-school' || ride.direction === 'back-home') ? (
-                                <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-                              ) : (
-                                <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                              )}
-                              <h3 className="text-lg font-semibold">
-                                {getDirectionLabel(ride.direction)}
-                              </h3>
-                              {isFull && (
-                                <span className="px-2 py-1 text-xs font-medium bg-destructive/10 text-destructive rounded">
-                                  Full
-                                </span>
-                              )}
-                            </div>
-                            {ride.pickupTime && (
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                                <Clock className="h-4 w-4" />
-                                <span>Pickup Time: {ride.pickupTime}</span>
-                              </div>
-                            )}
-                          </div>
-                          {(isAdmin || ride.driverId === user?.id) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onDeleteRide(ride.id, ride.driverId)}
-                              className="text-destructive flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
-                              title="Delete ride"
-                            >
-                              <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
-                            </Button>
-                          )}
-                        </div>
+          <div className="space-y-3">
+            {ridesByDate[date].map((ride) => {
+              const driver = usersMap[ride.driverId]
+              const isFull = ride.availableSeats <= 0
+              const isToRide = ride.direction === 'to-school' || ride.direction === 'to-tennis-center' || ride.direction === 'to-train-station'
 
-                        {/* Driver Info */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-3">
-                            <div className="flex items-start gap-2">
-                              <Users className="h-4 w-4 text-muted-foreground mt-1" />
-                              <div>
-                                <p className="text-sm font-medium">Driver</p>
-                                <p className="text-sm text-muted-foreground">{ride.driverName}</p>
-                                {driver?.phone && (
-                                  <a 
-                                    href={`tel:${driver.phone}`} 
-                                    className="text-sm text-primary hover:underline flex items-center gap-1 mt-1"
-                                  >
-                                    <Phone className="h-3 w-3" />
-                                    {driver.phone}
-                                  </a>
-                                )}
-                              </div>
-                            </div>
+              return (
+                <Card key={ride.id} className={`border-l-4 bg-white/90 shadow-sm hover:shadow-md transition-shadow ${isToRide ? 'border-l-green-500' : 'border-l-purple-500'}`}>
+                  <CardContent className="p-4">
 
-                            <div className="flex items-start gap-2">
-                              <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
-                              <div>
-                                <p className="text-sm font-medium">Pickup Location</p>
-                                <p className="text-sm text-muted-foreground">{ride.pickupAddress}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-3">
-                            <div className="flex items-start gap-2">
-                              <Users className="h-4 w-4 text-muted-foreground mt-1" />
-                              <div>
-                                <p className="text-sm font-medium">Seats</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {ride.passengers.length} / {ride.totalSeats} seats
-                                  {ride.availableSeats > 0 && (
-                                    <span className="text-green-600 ml-2">
-                                      ({ride.availableSeats} available)
-                                    </span>
-                                  )}
-                                </p>
-                              </div>
-                            </div>
-
-                            {ride.notes && (
-                              <div className="flex items-start gap-2">
-                                <FileText className="h-4 w-4 text-muted-foreground mt-1" />
-                                <div>
-                                  <p className="text-sm font-medium">Notes</p>
-                                  <p className="text-sm text-muted-foreground">{ride.notes}</p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Passengers */}
-                        {ride.passengers.length > 0 && (
-                          <div className="pt-4 border-t">
-                            <p className="text-sm font-medium mb-3">
-                              Passengers ({ride.passengers.length})
-                            </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {ride.passengers.map((passenger) => {
-                                const parent = usersMap[passenger.parentId]
-                                const childParents = passenger.child?.parents || []
-                                const allParents = childParents.length > 0 
-                                  ? childParents 
-                                  : parent 
-                                    ? [{ id: parent.id, name: parent.name, phone: parent.phone }]
-                                    : []
-
-                                return (
-                                  <div key={passenger.id} className="bg-muted/50 p-3 rounded-md">
-                                    <div className="font-medium text-sm">{passenger.childName}</div>
-                                    {allParents.length > 0 && (
-                                      <div className="text-xs mt-2 space-y-1">
-                                        {allParents.map((p) => (
-                                          <div key={p.id} className="text-muted-foreground">
-                                            <span>הורה: </span>
-                                            {p.phone ? (
-                                              <a 
-                                                href={`tel:${p.phone}`} 
-                                                className="hover:text-foreground hover:underline flex items-center gap-1"
-                                                title={p.phone}
-                                              >
-                                                <Phone className="h-3 w-3" />
-                                                {p.name}
-                                              </a>
-                                            ) : (
-                                              <span>{p.name}</span>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                    {passenger.pickupFromHome && passenger.pickupAddress && (
-                                      <div className="text-xs mt-2 flex items-start gap-1 text-primary">
-                                        <Home className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                                        <span>Home pickup: {passenger.pickupAddress}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
+                    {/* Top bar: direction badge + time + delete */}
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${isToRide ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                          {isToRide ? <ArrowRight className="h-3 w-3" /> : <ArrowLeft className="h-3 w-3" />}
+                          <DirectionLabel direction={ride.direction} />
+                        </span>
+                        {isFull ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">Full</span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-600">{ride.availableSeats} open</span>
+                        )}
+                        {ride.pickupTime && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />{ride.pickupTime}
+                          </span>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                      {(isAdmin || ride.driverId === user?.id) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDeleteRide(ride.id, ride.driverId)}
+                          className="text-destructive flex-shrink-0 h-7 w-7"
+                          title="Delete ride"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Info row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3 text-sm">
+                      <div className="flex items-start gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{ride.driverName}</p>
+                          {driver?.phone && (
+                            <a href={`tel:${driver.phone}`} className="text-xs text-primary hover:underline flex items-center gap-0.5 mt-0.5">
+                              <Phone className="h-3 w-3" />{driver.phone}
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-muted-foreground">{ride.pickupAddress}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-0.5">
+                          {Array.from({ length: ride.totalSeats }).map((_, i) => (
+                            <div key={i} className={`h-2.5 w-2.5 rounded-full border ${i < ride.passengers.length ? (isToRide ? 'bg-green-500 border-green-500' : 'bg-purple-500 border-purple-500') : 'bg-white border-gray-300'}`} />
+                          ))}
+                        </div>
+                        <span className="text-xs text-muted-foreground">{ride.passengers.length}/{ride.totalSeats}</span>
+                      </div>
+                    </div>
+
+                    {ride.notes && (
+                      <div className="flex items-start gap-2 mb-3 text-sm">
+                        <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <p className="text-muted-foreground">{ride.notes}</p>
+                      </div>
+                    )}
+
+                    {/* Passengers */}
+                    {ride.passengers.length > 0 && (
+                      <div className="border-t pt-3">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                          Passengers ({ride.passengers.length})
+                        </p>
+                        <div className="space-y-1.5">
+                          {ride.passengers.map((passenger) => {
+                            const parent = usersMap[passenger.parentId]
+                            const childParents = passenger.child?.parents || []
+                            const allParents = childParents.length > 0
+                              ? childParents
+                              : parent ? [{ id: parent.id, name: parent.name, phone: parent.phone }] : []
+
+                            return (
+                              <div key={passenger.id} className="flex items-start gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white flex-shrink-0 mt-0.5 ${isToRide ? 'bg-green-500' : 'bg-purple-500'}`}>
+                                  {passenger.childName.charAt(0)}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium">{passenger.childName}</p>
+                                  {allParents.length > 0 && (
+                                    <div className="flex flex-wrap gap-x-2 mt-0.5">
+                                      {allParents.map((p) => (
+                                        <span key={p.id} className="text-xs text-muted-foreground">
+                                          {p.phone ? (
+                                            <a href={`tel:${p.phone}`} className="hover:text-primary hover:underline inline-flex items-center gap-0.5">
+                                              <Phone className="h-2.5 w-2.5" />{p.name}
+                                            </a>
+                                          ) : p.name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {passenger.pickupFromHome && passenger.pickupAddress && (
+                                    <div className="flex items-center gap-1 text-xs text-primary mt-0.5">
+                                      <Home className="h-3 w-3 flex-shrink-0" />{passenger.pickupAddress}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
       ))}
     </div>
   )
@@ -457,23 +423,6 @@ function DriverPageContent() {
     }
   }
 
-  // Get direction display label
-  const getDirectionLabel = (direction: string) => {
-    switch (direction) {
-      case 'to-school':
-        return 'To university'
-      case 'from-school':
-        return 'From university'
-      case 'to-train-station':
-        return 'To train station'
-      case 'to-tennis-center':
-        return 'To Tennis Center'
-      case 'back-home':
-        return 'Back Home'
-      default:
-        return direction
-    }
-  }
 
   // Initialize form direction based on activity
   useEffect(() => {
@@ -825,7 +774,7 @@ function DriverPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-x-hidden w-full max-w-full">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 overflow-x-hidden w-full max-w-full">
       <Navigation />
       <div className="w-full max-w-full px-3 sm:px-4 py-4 sm:py-8 mx-auto overflow-x-hidden">
         <div className="mb-4 sm:mb-8 w-full max-w-full">
@@ -886,51 +835,49 @@ function DriverPageContent() {
         )}
 
         {showFullScheduled && !isAdmin && (
-          <Card className="mb-4 sm:mb-6 w-full max-w-full">
-            <CardHeader className="p-4 sm:p-6">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-                Date Range
-              </CardTitle>
-              <CardDescription>
-                Select a date range to filter your scheduled rides
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="fullScheduledStartDate">Start Date</Label>
-                  <Input
-                    id="fullScheduledStartDate"
-                    type="date"
-                    value={fullScheduledStartDate}
-                    onChange={(e) => setFullScheduledStartDate(e.target.value)}
-                    className="max-w-xs"
-                  />
+          <Card className="mb-4 sm:mb-6 w-full max-w-full bg-white/80 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-3 items-end">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground flex-shrink-0">
+                  <Calendar className="h-4 w-4" />
+                  Date Range
                 </div>
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="fullScheduledEndDate">End Date</Label>
-                  <Input
-                    id="fullScheduledEndDate"
-                    type="date"
-                    value={fullScheduledEndDate}
-                    onChange={(e) => setFullScheduledEndDate(e.target.value)}
-                    className="max-w-xs"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      const month = getCurrentMonthDates()
-                      setFullScheduledStartDate(month.startDate)
-                      setFullScheduledEndDate(month.endDate)
-                    }}
-                    className="whitespace-nowrap"
-                  >
-                    Current Month
-                  </Button>
+                <div className="flex flex-col sm:flex-row gap-3 flex-1">
+                  <div className="flex-1 space-y-1">
+                    <Label htmlFor="fullScheduledStartDate" className="text-xs">From</Label>
+                    <Input
+                      id="fullScheduledStartDate"
+                      type="date"
+                      value={fullScheduledStartDate}
+                      onChange={(e) => setFullScheduledStartDate(e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <Label htmlFor="fullScheduledEndDate" className="text-xs">To</Label>
+                    <Input
+                      id="fullScheduledEndDate"
+                      type="date"
+                      value={fullScheduledEndDate}
+                      onChange={(e) => setFullScheduledEndDate(e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const month = getCurrentMonthDates()
+                        setFullScheduledStartDate(month.startDate)
+                        setFullScheduledEndDate(month.endDate)
+                      }}
+                      className="whitespace-nowrap h-9"
+                    >
+                      This Month
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -938,35 +885,37 @@ function DriverPageContent() {
         )}
 
         {!showFullScheduled && (
-        <Card className="mb-4 sm:mb-6 w-full max-w-full">
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-              {isAdmin ? 'Filter Rides' : 'Select Date'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
-            {isAdmin && (
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="show-all-rides"
-                  checked={showAllRides}
-                  onCheckedChange={(checked) => setShowAllRides(checked === true)}
-                />
-                <Label
-                  htmlFor="show-all-rides"
-                  className="text-sm font-normal cursor-pointer"
-                >
-                  Show all drivers' rides for selected date ({allRides.filter(r => r.date === selectedDate).length} rides)
-                </Label>
+        <Card className="mb-4 sm:mb-6 w-full max-w-full bg-white/80 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-3 items-end">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground flex-shrink-0">
+                <Calendar className="h-4 w-4" />
+                {isAdmin ? 'Filter Rides' : 'Select Date'}
               </div>
-            )}
-            <Input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="max-w-xs"
-            />
+              <div className="flex flex-col sm:flex-row gap-3 flex-1 items-end">
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="h-9 max-w-xs"
+                />
+                {isAdmin && (
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="show-all-rides"
+                      checked={showAllRides}
+                      onCheckedChange={(checked) => setShowAllRides(checked === true)}
+                    />
+                    <Label
+                      htmlFor="show-all-rides"
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      All drivers ({allRides.filter(r => r.date === selectedDate).length} rides)
+                    </Label>
+                  </div>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
         )}
@@ -1141,7 +1090,7 @@ function DriverPageContent() {
                   <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
                     <p><strong>Ride Details:</strong></p>
                     <p>Date: {format(new Date(selectedRide.date), 'MMM d, yyyy')}</p>
-                    <p>Direction: {getDirectionLabel(selectedRide.direction)}</p>
+                    <p>Direction: <DirectionLabel direction={selectedRide.direction} /></p>
                     <p>Assigned Passengers: {selectedRide.passengers.length}</p>
         </div>
 
@@ -1222,9 +1171,9 @@ function DriverPageContent() {
         {!showFullScheduled && (
         <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 w-full max-w-full">
           {rides.length === 0 ? (
-            <Card className="col-span-full w-full">
+            <Card className="col-span-full w-full bg-white/80">
               <CardContent className="py-8 text-center text-muted-foreground">
-                {allRides.length === 0 
+                {allRides.length === 0
                   ? 'No rides created yet. Create your first ride to get started!'
                   : isAdmin && showAllRides
                     ? 'No rides found. Create a ride to get started!'
@@ -1233,149 +1182,150 @@ function DriverPageContent() {
               </CardContent>
             </Card>
           ) : (
-            rides.map((ride) => (
-              <Card key={ride.id} className="w-full max-w-full overflow-hidden min-w-0">
-                <CardHeader className="p-4 sm:p-6">
-                  <div className="flex justify-between items-start gap-2 min-w-0">
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                      <CardTitle className="text-base sm:text-lg break-words">
-                        {format(new Date(ride.date), 'MMM d, yyyy')}
-                      </CardTitle>
-                      <CardDescription className="text-xs sm:text-sm break-words">
-                        {getDirectionLabel(ride.direction)}
-                      </CardDescription>
-                      {isAdmin && ride.driverId !== user.id && (
-                        <CardDescription className="text-xs text-muted-foreground mt-1 break-words">
-                          Driver: {ride.driverName}
-                        </CardDescription>
+            rides.map((ride) => {
+              const isToRide = ride.direction === 'to-school' || ride.direction === 'to-tennis-center' || ride.direction === 'to-train-station'
+              const isFull = ride.availableSeats <= 0
+              return (
+              <Card key={ride.id} className={`border-l-4 bg-white/90 shadow-sm hover:shadow-md transition-shadow w-full max-w-full overflow-hidden min-w-0 ${isToRide ? 'border-l-green-500' : 'border-l-purple-500'}`}>
+                <CardContent className="p-4">
+
+                  {/* Top bar: direction badge + time + delete */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${isToRide ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                        {isToRide ? <ArrowRight className="h-3 w-3" /> : <ArrowLeft className="h-3 w-3" />}
+                        <DirectionLabel direction={ride.direction} />
+                      </span>
+                      {isFull ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">Full</span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-600">{ride.availableSeats} open</span>
+                      )}
+                      {ride.pickupTime && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />{ride.pickupTime}
+                        </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {ride.driverId === user.id && (
-                        <>
-                          <AddToCalendarButton
-                            ride={ride}
-                            driverName={ride.driverName}
-                            className="h-8 w-8 sm:h-10 sm:w-auto"
-                          />
-                          <ShareButton
-                            ride={ride}
-                            driverName={ride.driverName}
-                            className="h-8 w-8 sm:h-10 sm:w-auto"
-                          />
-                        </>
-                      )}
-                      {ride.driverId === user.id && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openUpdateDialog(ride)}
-                          className="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
-                          title="Update ride"
-                        >
-                          <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </Button>
-                      )}
-                      {(isAdmin || ride.driverId === user.id) && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteRide(ride.id, ride.driverId)}
-                          className="text-destructive flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
-                          title="Delete ride"
-                        >
-                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </Button>
-                      )}
-                    </div>
+                    {(isAdmin || ride.driverId === user.id) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteRide(ride.id, ride.driverId)}
+                        className="text-destructive h-7 w-7 flex-shrink-0"
+                        title="Delete ride"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-2 sm:space-y-3 p-4 sm:p-6 pt-0 overflow-hidden">
-                  <div className="flex items-center gap-2 text-sm min-w-0">
-                    <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="break-words">
-                      {ride.passengers.length} / {ride.totalSeats} seats filled
-                    </span>
-                  </div>
-                  <div className="text-sm min-w-0 overflow-hidden">
-                    <p className="font-medium break-words">Pickup:</p>
-                    <p className="text-muted-foreground break-words break-all">{ride.pickupAddress}</p>
-                  </div>
-                  {ride.notes && (
-                    <div className="text-sm min-w-0 overflow-hidden">
-                      <p className="font-medium break-words">Notes:</p>
-                      <p className="text-muted-foreground break-words break-all">{ride.notes}</p>
+
+                  {/* Action buttons row (own rides only) */}
+                  {ride.driverId === user.id && (
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <AddToCalendarButton
+                        ride={ride}
+                        driverName={ride.driverName}
+                        className="h-8 w-8 sm:w-auto"
+                      />
+                      <ShareButton
+                        ride={ride}
+                        driverName={ride.driverName}
+                        className="h-8 w-8 sm:w-auto"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openUpdateDialog(ride)}
+                        className="h-8 w-8"
+                        title="Update ride"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   )}
+
+                  {/* Info rows */}
+                  <div className="space-y-2 mb-3 text-sm">
+                    {isAdmin && ride.driverId !== user.id && (
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="font-medium">{ride.driverName}</span>
+                      </div>
+                    )}
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <p className="text-muted-foreground break-words break-all">{ride.pickupAddress}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: ride.totalSeats }).map((_, i) => (
+                          <div key={i} className={`h-2.5 w-2.5 rounded-full border ${i < ride.passengers.length ? (isToRide ? 'bg-green-500 border-green-500' : 'bg-purple-500 border-purple-500') : 'bg-white border-gray-300'}`} />
+                        ))}
+                      </div>
+                      <span className="text-xs text-muted-foreground">{ride.passengers.length}/{ride.totalSeats}</span>
+                    </div>
+                  </div>
+
+                  {ride.notes && (
+                    <div className="flex items-start gap-2 mb-3 text-sm">
+                      <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <p className="text-muted-foreground">{ride.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Passengers */}
                   {ride.passengers.length > 0 && (
-                    <div className="text-sm pt-2 border-t min-w-0 overflow-hidden">
-                      <p className="font-medium mb-2 break-words">Passengers:</p>
-                      <ul className="space-y-2">
+                    <div className="border-t pt-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        Passengers ({ride.passengers.length})
+                      </p>
+                      <div className="space-y-1.5">
                         {ride.passengers.map((passenger) => {
                           const parent = usersMap[passenger.parentId]
-                          const parentPhone = parent?.phone
-                          // Get parents from child if available, otherwise just show the assigning parent
                           const childParents = passenger.child?.parents || []
-                          const allParents = childParents.length > 0 
-                            ? childParents 
-                            : parent 
+                          const allParents = childParents.length > 0
+                            ? childParents
+                            : parent
                               ? [{ id: parent.id, name: parent.name, phone: parent.phone }]
                               : []
-                          
+
                           return (
-                            <li key={passenger.id} className="text-muted-foreground min-w-0 overflow-hidden">
-                              <div className="font-medium break-words">{passenger.childName}</div>
-                              {allParents.length > 0 && (
-                                <div className="text-xs mt-1 space-y-1">
-                                  {allParents.map((p) => (
-                                    <div key={p.id} className="break-words">
-                                      <span className="text-muted-foreground">הורה: </span>
-                                      {p.phone ? (
-                                        <a 
-                                          href={`tel:${p.phone}`} 
-                                          className="hover:text-foreground hover:underline"
-                                          title={p.phone}
-                                        >
-                                          {p.name}
-                                        </a>
-                                      ) : (
-                                        <span>{p.name}</span>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              {allParents.length === 0 && (
-                                <div className="text-xs break-words">
-                                  הורה:{' '}
-                                  {parentPhone ? (
-                                    <a 
-                                      href={`tel:${parentPhone}`} 
-                                      className="hover:text-foreground hover:underline"
-                                      title={parentPhone}
-                                    >
-                                      {passenger.parentName}
-                                    </a>
-                                  ) : (
-                                    passenger.parentName
-                                  )}
-                                </div>
-                              )}
-                            {passenger.pickupFromHome && passenger.pickupAddress && (
-                              <div className="text-xs mt-1 flex items-start gap-1 text-primary min-w-0">
-                                <MapPin className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                                <span className="break-words break-all">Home pickup: {passenger.pickupAddress}</span>
+                            <div key={passenger.id} className="flex items-start gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white flex-shrink-0 mt-0.5 ${isToRide ? 'bg-green-500' : 'bg-purple-500'}`}>
+                                {passenger.childName.charAt(0)}
                               </div>
-                            )}
-                            </li>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium">{passenger.childName}</p>
+                                {allParents.length > 0 && (
+                                  <div className="flex flex-wrap gap-x-2 mt-0.5">
+                                    {allParents.map((p) => (
+                                      <span key={p.id} className="text-xs text-muted-foreground">
+                                        {p.phone ? (
+                                          <a href={`tel:${p.phone}`} className="hover:text-primary hover:underline inline-flex items-center gap-0.5">
+                                            <Phone className="h-2.5 w-2.5" />{p.name}
+                                          </a>
+                                        ) : p.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {passenger.pickupFromHome && passenger.pickupAddress && (
+                                  <div className="flex items-center gap-1 text-xs text-primary mt-0.5">
+                                    <Home className="h-3 w-3 flex-shrink-0" />{passenger.pickupAddress}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           )
                         })}
-                      </ul>
+                      </div>
                     </div>
                   )}
                 </CardContent>
               </Card>
-            ))
+              )
+            })
           )}
         </div>
         )}

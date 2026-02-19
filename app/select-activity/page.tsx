@@ -65,77 +65,89 @@ export default function SelectActivityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
       <Navigation />
       <div className="flex items-center justify-center p-4 min-h-[calc(100vh-64px)]">
-        <Card className="w-full max-w-2xl">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-primary">Welcome, {user.name}!</CardTitle>
-            <CardDescription>
-              Select which activity you'd like to manage rides for
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => handleSelectActivity('kidu')}>
-                <CardHeader>
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="p-4 rounded-full bg-primary/10">
-                      <GraduationCap className="h-12 w-12 text-primary" />
-                    </div>
-                  </div>
-                  <CardTitle className="text-center">Kidumathematics</CardTitle>
-                  <CardDescription className="text-center">
-                    Manage rides for Kidumathematics
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li>• Create and manage rides</li>
-                    <li>• Assign children to rides</li>
-                    <li>• Coordinate transportation</li>
-                  </ul>
-                </CardContent>
-              </Card>
+        <div className="w-full max-w-2xl space-y-6">
 
-              <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => handleSelectActivity('tennis')}>
-                <CardHeader>
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="p-4 rounded-full bg-primary/10">
-                      <svg 
-                        className="h-12 w-12 text-primary" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        strokeWidth="2.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round"
-                      >
-                        {/* Tennis Ball Circle */}
-                        <circle cx="12" cy="12" r="10" />
-                        {/* First curved seam - from top-left (10 o'clock) to bottom-right (4 o'clock) */}
-                        <path d="M 7.5 5.5 Q 12 12 16.5 18.5" />
-                        {/* Second curved seam - from top-right (2 o'clock) to bottom-left (8 o'clock) */}
-                        <path d="M 16.5 5.5 Q 12 12 7.5 18.5" />
-                      </svg>
-                    </div>
+          {/* Header */}
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-primary">Welcome, {user.name}!</h1>
+            <p className="text-muted-foreground mt-2">
+              Select which activity you'd like to manage rides for
+            </p>
+          </div>
+
+          {/* Activity cards */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card
+              className="cursor-pointer border-2 border-transparent hover:border-primary/30 hover:shadow-xl transition-all duration-200 bg-white/80 backdrop-blur-sm"
+              onClick={() => handleSelectActivity('kidu')}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5">
+                    <GraduationCap className="h-10 w-10 text-primary" />
                   </div>
-                  <CardTitle className="text-center">Tennis Hanuka Camp</CardTitle>
-                  <CardDescription className="text-center">
-                    Manage rides for Tennis Camp
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li>• Create and manage rides</li>
-                    <li>• Assign children to rides</li>
-                    <li>• Coordinate transportation</li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </div>
-          </CardContent>
-        </Card>
+                </div>
+                <CardTitle className="text-center text-xl">Kidumathematics</CardTitle>
+                <CardDescription className="text-center">
+                  Manage rides for Kidumathematics
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {['Create and manage rides', 'Assign children to rides', 'Coordinate transportation'].map(item => (
+                    <li key={item} className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary/50 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card
+              className="cursor-pointer border-2 border-transparent hover:border-green-400/50 hover:shadow-xl transition-all duration-200 bg-white/80 backdrop-blur-sm"
+              onClick={() => handleSelectActivity('tennis')}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-green-200 to-green-50">
+                    <svg
+                      className="h-10 w-10 text-green-600"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M 7.5 5.5 Q 12 12 16.5 18.5" />
+                      <path d="M 16.5 5.5 Q 12 12 7.5 18.5" />
+                    </svg>
+                  </div>
+                </div>
+                <CardTitle className="text-center text-xl">Tennis Hanuka Camp</CardTitle>
+                <CardDescription className="text-center">
+                  Manage rides for Tennis Camp
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {['Create and manage rides', 'Assign children to rides', 'Coordinate transportation'].map(item => (
+                    <li key={item} className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500/50 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+
+        </div>
       </div>
     </div>
   )

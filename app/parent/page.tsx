@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { format } from 'date-fns'
+import { DirectionLabel } from '@/components/direction-label'
 import { Calendar, Users, MapPin, CheckCircle2, XCircle, Plus, X, Home, Phone, LayoutDashboard, Table, List, Train } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { useActivity } from '@/components/activity-provider'
@@ -70,24 +71,6 @@ function ParentTableView({ rides, usersMap, user, isAdmin, activity, onAssignCli
   // Helper function to determine if date should be red (alternating pattern)
   const isRedDate = (date: string, index: number) => {
     return index % 3 === 2
-  }
-
-  // Helper function to get direction label
-  const getDirectionLabel = (direction: string) => {
-    switch (direction) {
-      case 'to-school':
-        return 'To university'
-      case 'from-school':
-        return 'From university'
-      case 'to-train-station':
-        return 'To train station'
-      case 'to-tennis-center':
-        return 'To Tennis Center'
-      case 'back-home':
-        return 'Back Home'
-      default:
-        return direction
-    }
   }
 
   if (rides.length === 0) {
@@ -399,24 +382,6 @@ function ParentPageContent() {
     })
     
     setRides(filtered)
-  }
-
-  // Get direction display label
-  const getDirectionLabel = (direction: string) => {
-    switch (direction) {
-      case 'to-school':
-        return 'To university'
-      case 'from-school':
-        return 'From university'
-      case 'to-train-station':
-        return 'To train station'
-      case 'to-tennis-center':
-        return 'To Tennis Center'
-      case 'back-home':
-        return 'Back Home'
-      default:
-        return direction
-    }
   }
 
   const addChildEntry = () => {
@@ -782,7 +747,7 @@ function ParentPageContent() {
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-lg">
-                          {getDirectionLabel(ride.direction)}
+                          <DirectionLabel direction={ride.direction} />
                         </CardTitle>
                         <CardDescription>
                           {format(new Date(ride.date), 'MMM d, yyyy')} • {ride.driverName}
@@ -913,7 +878,7 @@ function ParentPageContent() {
                 <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
                   <p><strong>Ride Details:</strong></p>
                   <p>Date: {format(new Date(selectedRide.date), 'MMM d, yyyy')}</p>
-                  <p>Direction: {getDirectionLabel(selectedRide.direction)}</p>
+                  <p>Direction: <DirectionLabel direction={selectedRide.direction} /></p>
                   <p>Pickup Location: {selectedRide.pickupAddress}</p>
                   <p>Available Seats: {selectedRide.availableSeats}</p>
                 </div>
