@@ -92,3 +92,23 @@
     height: auto;
   }
 }
+
+/* Dark mode overrides for hardcoded Tailwind color utilities */
+.dark .from-blue-50 {
+  --tw-gradient-from: hsl(222, 55%, 11%) var(--tw-gradient-from-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+.dark .via-indigo-50 {
+  --tw-gradient-via: hsl(226, 50%, 15%) var(--tw-gradient-via-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to) !important;
+}
+.dark .to-blue-100 {
+  --tw-gradient-to: hsl(222, 50%, 10%) var(--tw-gradient-to-position) !important;
+}
+.dark .bg-white\/95 { background-color: hsl(222, 50%, 9% / 0.95) !important; }
+.dark .bg-white\/90 { background-color: hsl(222 50% 9% / 0.9) !important; }
+.dark .bg-white\/80 { background-color: hsl(222 50% 9% / 0.85) !important; }
+.dark .bg-gray-50  { background-color: hsl(var(--muted)) !important; }
+.dark .bg-gray-200 { background-color: hsl(var(--muted)) !important; }
+.dark .border-gray-300 { border-color: hsl(var(--border)) !important; }
+.dark .text-gray-700 { color: hsl(var(--muted-foreground)) !important; }

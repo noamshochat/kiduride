@@ -4,6 +4,7 @@ import './globals.css'
 import { AuthProvider } from '@/components/auth-provider'
 import { ActivityProvider } from '@/components/activity-provider'
 import { DynamicTitle } from '@/components/dynamic-title'
+import { ThemeProvider } from '@/components/theme-provider'
 import { Analytics } from '@vercel/analytics/next'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -26,14 +27,16 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <AuthProvider>
-          <ActivityProvider>
-            <DynamicTitle />
-            {children}
-          </ActivityProvider>
-        </AuthProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <AuthProvider>
+            <ActivityProvider>
+              <DynamicTitle />
+              {children}
+            </ActivityProvider>
+          </AuthProvider>
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

@@ -4,14 +4,16 @@ import { useAuth } from '@/components/auth-provider'
 import { useActivity } from '@/components/activity-provider'
 import { Button } from '@/components/ui/button'
 import { useRouter, usePathname } from 'next/navigation'
-import { Car, Users, LogOut, GraduationCap } from 'lucide-react'
+import { Car, Users, LogOut, GraduationCap, Sun, Moon } from 'lucide-react'
 import { getNextThursday, cn } from '@/lib/utils'
+import { useTheme } from 'next-themes'
 
 export function Navigation() {
   const { user, logout } = useAuth()
   const { activity, setActivity } = useActivity()
   const router = useRouter()
   const pathname = usePathname()
+  const { theme, setTheme } = useTheme()
 
   if (!user) return null
 
@@ -33,7 +35,7 @@ export function Navigation() {
   const isParentActive = pathname === '/parent' || pathname === '/dashboard' || pathname?.startsWith('/dashboard')
 
   return (
-    <nav className="border-b bg-white/95 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+    <nav className="border-b bg-white/95 dark:bg-gray-900/95 backdrop-blur-md sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-3 sm:px-4 py-2.5 max-w-full overflow-x-hidden">
         <div className="flex items-center justify-between gap-2 min-w-0">
 
@@ -135,6 +137,18 @@ export function Navigation() {
                 )}
               </Button>
             )}
+
+            {/* Dark mode toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title="Toggle theme"
+            >
+              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            </Button>
 
             {/* User avatar + name */}
             <div className="hidden sm:flex items-center gap-2">
