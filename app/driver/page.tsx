@@ -3,7 +3,7 @@
 import { useAuth } from '@/components/auth-provider'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, Suspense } from 'react'
-import { Ride, User } from '@/lib/demo-data'
+import { Ride, User, Child } from '@/lib/demo-data'
 import { supabaseDb } from '@/lib/supabase-db'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,8 +13,9 @@ import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
-import { Plus, Trash2, Users, MapPin, Calendar, Pencil, Table, List, Train, ArrowRight, ArrowLeft, Clock, FileText, Phone, Home } from 'lucide-react'
+import { Plus, Trash2, Users, MapPin, Calendar, Pencil, Table, List, Train, ArrowRight, ArrowLeft, Clock, FileText, Phone, Home, UserPlus } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
+import { ChildAutocomplete } from '@/components/child-autocomplete'
 import { ShareButton } from '@/components/share-button'
 import { AddToCalendarButton } from '@/components/add-to-calendar-button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -50,7 +51,7 @@ const getAllThursdays = (start: string, end: string): string[] => {
 }
 
 // Full Scheduled Summary View Component (like Monthly Summary)
-function FullScheduledSummaryView({ rides, usersMap, activity, user, isAdmin, onDeleteRide }: { rides: Ride[], usersMap: Record<string, User>, activity: string | null, user: User | null, isAdmin: boolean, onDeleteRide: (rideId: string, rideDriverId?: string) => Promise<void> }) {
+function FullScheduledSummaryView({ rides, usersMap, activity, user, isAdmin, onDeleteRide, onRemovePassenger, onAssignChild }: { rides: Ride[], usersMap: Record<string, User>, activity: string | null, user: User | null, isAdmin: boolean, onDeleteRide: (rideId: string, rideDriverId?: string) => Promise<void>, onRemovePassenger: (rideId: string, passengerId: string, childName: string) => void, onAssignChild: (ride: Ride) => void }) {
   // Group rides by date
   const ridesByDate: Record<string, Ride[]> = {}
   rides.forEach(ride => {
@@ -163,11 +164,18 @@ function FullScheduledSummaryView({ rides, usersMap, activity, user, isAdmin, on
                     )}
 
                     {/* Passengers */}
-                    {ride.passengers.length > 0 && (
-                      <div className="border-t pt-3">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                    <div className="border-t pt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                           Passengers ({ride.passengers.length})
                         </p>
+                        {ride.driverId === user?.id && ride.availableSeats > 0 && (
+                          <Button variant="outline" size="sm" className="h-6 px-2 text-xs gap-1" onClick={() => onAssignChild(ride)}>
+                            <UserPlus className="h-3 w-3" />Assign Child
+                          </Button>
+                        )}
+                      </div>
+                      {ride.passengers.length > 0 && (
                         <div className="space-y-1.5">
                           {ride.passengers.map((passenger) => {
                             const parent = usersMap[passenger.parentId]
@@ -181,7 +189,7 @@ function FullScheduledSummaryView({ rides, usersMap, activity, user, isAdmin, on
                                 <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white flex-shrink-0 mt-0.5 ${isToRide ? 'bg-green-500' : 'bg-purple-500'}`}>
                                   {passenger.childName.charAt(0)}
                                 </div>
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                   <p className="text-sm font-medium">{passenger.childName}</p>
                                   {allParents.length > 0 && (
                                     <div className="flex flex-wrap gap-x-2 mt-0.5">
@@ -202,12 +210,22 @@ function FullScheduledSummaryView({ rides, usersMap, activity, user, isAdmin, on
                                     </div>
                                   )}
                                 </div>
+                                {(isAdmin || ride.driverId === user?.id) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => onRemovePassenger(ride.id, passenger.id, passenger.childName)}
+                                    className="text-destructive h-6 px-2 text-xs flex-shrink-0 ml-2"
+                                  >
+                                    Remove
+                                  </Button>
+                                )}
                               </div>
                             )
                           })}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               )
@@ -386,6 +404,11 @@ function DriverPageContent() {
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false)
   const [whatsAppTemplateSid, setWhatsAppTemplateSid] = useState('')
   const [whatsAppContentVariables, setWhatsAppContentVariables] = useState('')
+  const [pendingRemoval, setPendingRemoval] = useState<{ rideId: string; passengerId: string; childName: string } | null>(null)
+  const [assignRide, setAssignRide] = useState<Ride | null>(null)
+  const [assignChild, setAssignChild] = useState<Child | null>(null)
+  const [assignPickupFromHome, setAssignPickupFromHome] = useState(false)
+  const [assignPickupAddress, setAssignPickupAddress] = useState('')
   const [formData, setFormData] = useState(() => {
     const dateParam = searchParams.get('date')
     const directionParam = searchParams.get('direction') as 'to-school' | 'from-school' | 'to-train-station' | 'to-tennis-center' | 'back-home' | null
@@ -719,6 +742,56 @@ function DriverPageContent() {
         // Reload on error to ensure state is correct
         await loadRides()
       }
+    }
+  }
+
+  const handleRemovePassenger = (rideId: string, passengerId: string, childName: string) => {
+    setPendingRemoval({ rideId, passengerId, childName })
+  }
+
+  const confirmRemovePassenger = async () => {
+    if (!pendingRemoval) return
+    const { rideId, passengerId } = pendingRemoval
+    setPendingRemoval(null)
+    try {
+      const success = await supabaseDb.removePassenger(rideId, passengerId)
+      if (success) {
+        await loadRides()
+      } else {
+        alert('Failed to remove passenger. Please try again.')
+      }
+    } catch (error: any) {
+      console.error('Error removing passenger:', error)
+      alert(`Failed to remove passenger: ${error?.message || 'Unknown error'}`)
+    }
+  }
+
+  const handleAssignChild = async () => {
+    if (!assignRide || !assignChild || !user) return
+    const childName = `${assignChild.firstName}${assignChild.lastName ? ' ' + assignChild.lastName : ''}`
+    const parentId = assignChild.parents?.[0]?.id || assignChild.parentIds?.[0] || user.id
+    const parentName = assignChild.parents?.[0]?.name || user.name
+    try {
+      const success = await supabaseDb.addPassenger(assignRide.id, {
+        id: `p${Date.now()}-${Math.random()}`,
+        childId: assignChild.id,
+        childName,
+        parentId,
+        parentName,
+        pickupFromHome: assignPickupFromHome,
+        pickupAddress: assignPickupFromHome && assignPickupAddress.trim() ? assignPickupAddress.trim() : undefined,
+      })
+      if (success) {
+        setAssignRide(null)
+        setAssignChild(null)
+        setAssignPickupFromHome(false)
+        setAssignPickupAddress('')
+        await loadRides()
+      } else {
+        alert('Failed to assign child. Please try again.')
+      }
+    } catch (error: any) {
+      alert(error?.message || 'Failed to assign child.')
     }
   }
 
@@ -1160,7 +1233,7 @@ function DriverPageContent() {
         {showFullScheduled && !isAdmin && (
           <>
             {viewMode === 'summary' ? (
-              <FullScheduledSummaryView rides={fullScheduledRides} usersMap={usersMap} activity={activity} user={user} isAdmin={isAdmin} onDeleteRide={handleDeleteRide} />
+              <FullScheduledSummaryView rides={fullScheduledRides} usersMap={usersMap} activity={activity} user={user} isAdmin={isAdmin} onDeleteRide={handleDeleteRide} onRemovePassenger={handleRemovePassenger} onAssignChild={setAssignRide} />
             ) : (
               <FullScheduledTableView rides={fullScheduledRides} activity={activity} />
             )}
@@ -1275,11 +1348,18 @@ function DriverPageContent() {
                   )}
 
                   {/* Passengers */}
-                  {ride.passengers.length > 0 && (
-                    <div className="border-t pt-3">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  <div className="border-t pt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                         Passengers ({ride.passengers.length})
                       </p>
+                      {ride.driverId === user.id && ride.availableSeats > 0 && (
+                        <Button variant="outline" size="sm" className="h-6 px-2 text-xs gap-1" onClick={() => setAssignRide(ride)}>
+                          <UserPlus className="h-3 w-3" />Assign Child
+                        </Button>
+                      )}
+                    </div>
+                    {ride.passengers.length > 0 && (
                       <div className="space-y-1.5">
                         {ride.passengers.map((passenger) => {
                           const parent = usersMap[passenger.parentId]
@@ -1295,7 +1375,7 @@ function DriverPageContent() {
                               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white flex-shrink-0 mt-0.5 ${isToRide ? 'bg-green-500' : 'bg-purple-500'}`}>
                                 {passenger.childName.charAt(0)}
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex-1">
                                 <p className="text-sm font-medium">{passenger.childName}</p>
                                 {allParents.length > 0 && (
                                   <div className="flex flex-wrap gap-x-2 mt-0.5">
@@ -1316,12 +1396,22 @@ function DriverPageContent() {
                                   </div>
                                 )}
                               </div>
+                              {(isAdmin || ride.driverId === user.id) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRemovePassenger(ride.id, passenger.id, passenger.childName)}
+                                  className="text-destructive h-6 px-2 text-xs flex-shrink-0 ml-2"
+                                >
+                                  Remove
+                                </Button>
+                              )}
                             </div>
                           )
                         })}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </CardContent>
               </Card>
               )
@@ -1329,6 +1419,68 @@ function DriverPageContent() {
           )}
         </div>
         )}
+
+        {/* Remove Passenger Confirmation Dialog */}
+        <Dialog open={!!pendingRemoval} onOpenChange={(open) => { if (!open) setPendingRemoval(null) }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Remove Passenger</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to remove <strong>{pendingRemoval?.childName}</strong> from this ride?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPendingRemoval(null)}>Cancel</Button>
+              <Button variant="destructive" onClick={confirmRemovePassenger}>Remove</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign Child Dialog */}
+        <Dialog open={!!assignRide} onOpenChange={(open) => { if (!open) { setAssignRide(null); setAssignChild(null); setAssignPickupFromHome(false); setAssignPickupAddress('') } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Assign Child to Ride</DialogTitle>
+              <DialogDescription>
+                {assignRide && `${format(new Date(assignRide.date), 'EEEE, MMMM d')} · ${assignRide.availableSeats} seat${assignRide.availableSeats !== 1 ? 's' : ''} available`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label>Child</Label>
+                <ChildAutocomplete
+                  value={assignChild}
+                  onChange={setAssignChild}
+                  activity={activity as 'kidu' | 'tennis' | null}
+                  placeholder="Search for a child..."
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="assignPickupFromHome"
+                  checked={assignPickupFromHome}
+                  onCheckedChange={(v) => setAssignPickupFromHome(!!v)}
+                />
+                <Label htmlFor="assignPickupFromHome" className="cursor-pointer">Pickup from home</Label>
+              </div>
+              {assignPickupFromHome && (
+                <div className="space-y-1.5">
+                  <Label>Pickup address</Label>
+                  <Input
+                    value={assignPickupAddress}
+                    onChange={(e) => setAssignPickupAddress(e.target.value)}
+                    placeholder="Enter pickup address"
+                  />
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setAssignRide(null); setAssignChild(null); setAssignPickupFromHome(false); setAssignPickupAddress('') }}>Cancel</Button>
+              <Button onClick={handleAssignChild} disabled={!assignChild}>Assign</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </div>
   )
