@@ -1394,7 +1394,8 @@ function DriverPageContent() {
                                 )}
                                 {passenger.pickupFromHome && passenger.pickupAddress && (
                                   <div className="flex items-center gap-1 text-xs text-primary mt-0.5">
-                                    <Home className="h-3 w-3 flex-shrink-0" />{passenger.pickupAddress}
+                                    <Home className="h-3 w-3 flex-shrink-0" />
+                                    <AddressLink address={passenger.pickupAddress} className="text-xs text-primary" />
                                   </div>
                                 )}
                               </div>
