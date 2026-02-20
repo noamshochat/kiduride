@@ -16,11 +16,12 @@ import { format } from 'date-fns'
 import { Plus, Trash2, Users, MapPin, Calendar, Pencil, Table, List, Train, ArrowRight, ArrowLeft, Clock, FileText, Phone, Home, UserPlus } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { ChildAutocomplete } from '@/components/child-autocomplete'
+import { AddressLink } from '@/components/address-link'
 import { ShareButton } from '@/components/share-button'
 import { AddToCalendarButton } from '@/components/add-to-calendar-button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useActivity } from '@/components/activity-provider'
-import { getCurrentMonthDates } from '@/lib/utils'
+import { getCurrentMonthDates, getNextThursday } from '@/lib/utils'
 import { DirectionLabel } from '@/components/direction-label'
 import React from 'react'
 
@@ -144,7 +145,7 @@ function FullScheduledSummaryView({ rides, usersMap, activity, user, isAdmin, on
                       </div>
                       <div className="flex items-start gap-2">
                         <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-muted-foreground">{ride.pickupAddress}</p>
+                        <AddressLink address={ride.pickupAddress} className="text-sm text-muted-foreground" />
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="flex gap-0.5">
@@ -206,7 +207,8 @@ function FullScheduledSummaryView({ rides, usersMap, activity, user, isAdmin, on
                                   )}
                                   {passenger.pickupFromHome && passenger.pickupAddress && (
                                     <div className="flex items-center gap-1 text-xs text-primary mt-0.5">
-                                      <Home className="h-3 w-3 flex-shrink-0" />{passenger.pickupAddress}
+                                      <Home className="h-3 w-3 flex-shrink-0" />
+                                      <AddressLink address={passenger.pickupAddress} className="text-xs text-primary" />
                                     </div>
                                   )}
                                 </div>
@@ -384,7 +386,7 @@ function DriverPageContent() {
   const searchParams = useSearchParams()
   const [selectedDate, setSelectedDate] = useState(() => {
     const dateParam = searchParams.get('date')
-    return dateParam || new Date().toISOString().split('T')[0]
+    return dateParam || getNextThursday()
   })
   const [showAllRides, setShowAllRides] = useState(false) // Admin: show all rides or filter by date
   const [showFullScheduled, setShowFullScheduled] = useState(false) // Show all driver's scheduled rides
@@ -1328,7 +1330,7 @@ function DriverPageContent() {
                     )}
                     <div className="flex items-start gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                      <p className="text-muted-foreground break-words break-all">{ride.pickupAddress}</p>
+                      <AddressLink address={ride.pickupAddress} className="text-muted-foreground" />
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex gap-0.5">
