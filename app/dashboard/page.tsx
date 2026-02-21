@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { format } from 'date-fns'
 import { Calendar, Users, MapPin, Phone, Clock, FileText, ArrowRight, ArrowLeft, Home, Printer, Table, Plus, X } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
+import { AddressLink } from '@/components/address-link'
 import { useActivity } from '@/components/activity-provider'
 import { getCurrentMonthDates } from '@/lib/utils'
 import { DirectionLabel } from '@/components/direction-label'
@@ -406,7 +407,7 @@ function DashboardContent() {
                             </div>
                             <div className="flex items-start gap-2">
                               <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                              <p className="text-sm text-muted-foreground">{ride.pickupAddress}</p>
+                              <AddressLink address={ride.pickupAddress} className="text-sm text-muted-foreground" />
                             </div>
                             <div className="flex items-center gap-2">
                               <div className="flex gap-0.5">
@@ -447,7 +448,7 @@ function DashboardContent() {
                                       : []
 
                                   return (
-                                    <div key={passenger.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-1.5">
+                                    <div key={passenger.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2.5">
                                       <div className="flex items-start gap-2 flex-1 min-w-0">
                                         <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white flex-shrink-0 mt-0.5 ${isToRide ? 'bg-green-500' : 'bg-purple-500'}`}>
                                           {passenger.childName.charAt(0)}
@@ -473,9 +474,9 @@ function DashboardContent() {
                                             </a>
                                           )}
                                           {passenger.pickupFromHome && passenger.pickupAddress && (
-                                            <div className="flex items-center gap-1 text-xs text-primary mt-0.5">
+                                            <div className="flex items-center gap-1 text-xs text-primary mt-2">
                                               <Home className="h-3 w-3 flex-shrink-0" />
-                                              {passenger.pickupAddress}
+                                              <AddressLink address={passenger.pickupAddress} className="text-xs text-primary" />
                                             </div>
                                           )}
                                         </div>

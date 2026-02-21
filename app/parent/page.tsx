@@ -16,6 +16,7 @@ import { format } from 'date-fns'
 import { DirectionLabel } from '@/components/direction-label'
 import { Calendar, Users, MapPin, CheckCircle2, XCircle, Plus, X, Home, Phone, LayoutDashboard, Table, List, Train } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
+import { AddressLink } from '@/components/address-link'
 import { useActivity } from '@/components/activity-provider'
 import { getCurrentMonthDates } from '@/lib/utils'
 import React from 'react'
@@ -770,7 +771,7 @@ function ParentPageContent() {
                     </div>
                     <div className="flex items-start gap-2 text-sm">
                       <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <span className="text-muted-foreground">{ride.pickupAddress}</span>
+                      <AddressLink address={ride.pickupAddress} className="text-muted-foreground" />
                     </div>
                     {driver?.phone && (
                       <div className="flex items-center gap-2 text-sm">
@@ -807,9 +808,9 @@ function ParentPageContent() {
                                     )}
                                   </div>
                                   {passenger.pickupFromHome && passenger.pickupAddress && (
-                                    <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                      <Home className="h-3 w-3" />
-                                      <span>{passenger.pickupAddress}</span>
+                                    <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                                      <Home className="h-3 w-3 flex-shrink-0" />
+                                      <AddressLink address={passenger.pickupAddress} className="text-xs text-muted-foreground" />
                                     </div>
                                   )}
                                 </div>
