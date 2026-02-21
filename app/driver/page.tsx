@@ -186,7 +186,7 @@ function FullScheduledSummaryView({ rides, usersMap, activity, user, isAdmin, on
                               : parent ? [{ id: parent.id, name: parent.name, phone: parent.phone }] : []
 
                             return (
-                              <div key={passenger.id} className="flex items-start gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+                              <div key={passenger.id} className="flex items-start gap-2 bg-gray-50 rounded-lg px-3 py-2.5">
                                 <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white flex-shrink-0 mt-0.5 ${isToRide ? 'bg-green-500' : 'bg-purple-500'}`}>
                                   {passenger.childName.charAt(0)}
                                 </div>
@@ -206,7 +206,7 @@ function FullScheduledSummaryView({ rides, usersMap, activity, user, isAdmin, on
                                     </div>
                                   )}
                                   {passenger.pickupFromHome && passenger.pickupAddress && (
-                                    <div className="flex items-center gap-1 text-xs text-primary mt-0.5">
+                                    <div className="flex items-center gap-1 text-xs text-primary mt-2">
                                       <Home className="h-3 w-3 flex-shrink-0" />
                                       <AddressLink address={passenger.pickupAddress} className="text-xs text-primary" />
                                     </div>
@@ -1373,7 +1373,7 @@ function DriverPageContent() {
                               : []
 
                           return (
-                            <div key={passenger.id} className="flex items-start gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+                            <div key={passenger.id} className="flex items-start gap-2 bg-gray-50 rounded-lg px-3 py-2.5">
                               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white flex-shrink-0 mt-0.5 ${isToRide ? 'bg-green-500' : 'bg-purple-500'}`}>
                                 {passenger.childName.charAt(0)}
                               </div>
